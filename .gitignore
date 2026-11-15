@@ -1,0 +1,11 @@
+# Python & Test önbellekleri
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Büyük PDF ve Word raporları (GitHub'da yer kaplamasın)
+*.pdf
+*.docx
+
+# Docker geçici dosyaları
+*.log

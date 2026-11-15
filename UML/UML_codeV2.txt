@@ -1,0 +1,65 @@
+@startuml
+autonumber
+skinparam BoxPadding 10
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+<style>
+participant {
+  Padding 10
+}
+</style>
+
+actor "SusVibes Ingestion" as Benchmark
+participant "AST Context Pruner" as Pruner
+participant "Patch Synthesizer\n(Qwen)" as Coder
+
+box "Hybrid Security Auditor" #F9F0FF
+    participant "SAST Engine\n(Semgrep / Bandit)" as SAST
+    participant "Learned Security Model\n(QLoRA Adapter)" as QLoRA
+end box
+
+box "Docker Sealed Sandbox" #E8F5E9
+    participant "func.txt\n(Unit Tests)" as FuncTest
+    participant "sec.txt\n(Exploit Tests)" as SecTest
+end box
+
+participant "Self-Healing Controller" as Controller #FFF3E0
+
+Benchmark -> Pruner : Görev Kodu ve Issue Açıklaması
+Pruner -> Coder : Kırpılmış Fonksiyon Kapsamı (AST Chunks)
+
+loop Kendi Kendini İyileştirme Döngüsü [Tur <= 3]
+    Coder -> SAST : Üretilen Güvenli Kod Adayı
+    Coder -> QLoRA : Üretilen Güvenli Kod Adayı
+
+    par Deterministik ve Nöral Tarama
+        SAST -> SAST : Statik Kural Analizi
+    also
+        QLoRA -> QLoRA : Mantıksal Zafiyet Tespiti (CWE-613)
+    end
+
+    alt Güvenlik Zafiyeti Tespit Edildi (SAST veya QLoRA FAIL)
+        SAST --> Coder : Sentaktik Kural İhlali Raporu
+        QLoRA --> Coder : Mantıksal Açık Tanısı
+    else Kod Güvenlik Denetiminden Geçti (CLEAN)
+        Coder -> FuncTest : Git Unified Diff Uygula & Birim Testleri Koş
+        Coder -> SecTest : Git Unified Diff Uygula & Exploit Testi Koş
+
+        par Çift Doğrulama (Dual-Verification)
+            FuncTest -> FuncTest : pytest func.txt
+        also
+            SecTest -> SecTest : pytest sec.txt
+        end
+
+        alt Fonksiyonel Regresyon veya Exploit Başarısızlığı (func=FAIL veya sec=FAIL)
+            FuncTest --> Controller : pytest stderr / Traceback
+            SecTest --> Controller : Exploit Engellenemedi Bilgisi
+            Controller --> Coder : Cerrahi Geri Bildirim: "API sözleşmesini koru, regresyonu gider"
+        else Çift Doğrulama Başarılı (func=PASS ve sec=PASS)
+            FuncTest --> Benchmark : Doğrulanmış Yama Kaydedildi (sonuc.json)
+            SecTest --> Benchmark : Güvenlik Testi Geçildi
+        end
+    end
+end
+@enduml
