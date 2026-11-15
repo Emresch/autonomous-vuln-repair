@@ -1,0 +1,18 @@
+{
+  "task_dir": "pipeline\\starlette_case",
+  "total_findings": 1,
+  "findings": [
+    {
+      "engine": "Semgrep",
+      "filename": "pipeline\\starlette_case\\staticfiles.py",
+      "line_number": 21,
+      "test_id": "insecure-commonprefix-path-traversal",
+      "cwe": "CWE-22",
+      "severity": "ERROR",
+      "issue_text": "Insecure path validation: 'os.path.commonprefix' performs character-by-character comparison rather than path-aware validation, leading to Path Traversal vulnerabilities (CWE-22). Use 'os.path.commonpath' instead.",
+      "code": "requires login"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1
+}

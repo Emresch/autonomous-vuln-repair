@@ -1,6 +1,7 @@
 import json
 import urllib.request
 import re
+import textwrap
 from typing import Dict, Any, Optional
 
 class PatchSynthesizer:
@@ -84,16 +85,25 @@ Please analyze this failure, keep the original functional contract, and fix the 
         """
         Orijinal dosyada start_line ile end_line arasındaki zafiyetli fonksiyonu
         Qwen'in ürettiği güvenli fonksiyonla yer değiştirir.
+        textwrap ile girinti seviyesini kusursuz şekilde korur.
         """
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
+
+        target_first_line = lines[start_line - 1] if start_line - 1 < len(lines) else ""
+        indent_len = len(target_first_line) - len(target_first_line.lstrip())
+        base_indent = target_first_line[:indent_len]
+
+        # Önce modelin ürettiği kodun fazlalık girintilerini temizle (0 seviyesine çek)
+        clean_code = textwrap.dedent(new_code.strip())
+        # Ardından orijinal satırın girinti seviyesine göre hizala
+        aligned_code = textwrap.indent(clean_code, base_indent)
 
         # 1-indexed to 0-indexed
         before = lines[: start_line - 1]
         after = lines[end_line:]
 
-        # Yeni kodu uygun satır sonuyla ekle
-        patched_lines = before + [new_code + "\n"] + after
+        patched_lines = before + [aligned_code + "\n"] + after
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.writelines(patched_lines)

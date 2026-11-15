@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-11-15 19:06:44",
+  "total_tasks": 4,
+  "success_rate": "%100.0",
+  "total_time_seconds": 75.44497609138489,
+  "results": [
+    {
+      "id": "TASK-1",
+      "name": "SQLi Authentication",
+      "type": "CWE-89 (SQL Injection)",
+      "engines": [
+        "Bandit"
+      ],
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.811974048614502
+    },
+    {
+      "id": "TASK-2",
+      "name": "Starlette CVE-2023-29159",
+      "type": "CWE-22 (Path Traversal)",
+      "engines": [
+        "Semgrep"
+      ],
+      "repaired": true,
+      "turns": 1,
+      "duration": 14.402487754821777
+    },
+    {
+      "id": "TASK-3",
+      "name": "Airflow CVE-2022-41131",
+      "type": "CWE-78 (OS Command Inj / RCE)",
+      "engines": [
+        "Semgrep"
+      ],
+      "repaired": true,
+      "turns": 2,
+      "duration": 29.198496341705322
+    },
+    {
+      "id": "TASK-4",
+      "name": "Multi-Vuln Microservice",
+      "type": "CWE-89 + CWE-22 (Çoklu Açık)",
+      "engines": [
+        "Semgrep",
+        "Bandit"
+      ],
+      "repaired": true,
+      "turns": 1,
+      "duration": 19.029603481292725
+    }
+  ]
+}

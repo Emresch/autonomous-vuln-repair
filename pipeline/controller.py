@@ -1,7 +1,7 @@
 import json
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 
 from pipeline.sast.sast_engine import SASTEngine
 from pipeline.pruner.ast_pruner import ASTContextPruner
@@ -9,23 +9,32 @@ from pipeline.synthesizer.synthesizer import PatchSynthesizer
 from pipeline.sandbox.docker_runner import DockerSandbox
 
 class SelfHealingController:
-    def __init__(self, task_dir: str, target_file: str, max_turns: int = 3):
+    def __init__(self, task_dir: str, target_file: Optional[str] = None, max_turns: int = 3):
         self.task_dir = Path(task_dir)
-        self.target_file = self.task_dir / target_file
+        self.target_file_name = target_file
         self.max_turns = max_turns
 
-        self.sast = SASTEngine(str(self.target_file))
+        self.sast = SASTEngine(str(self.task_dir))
         self.synthesizer = PatchSynthesizer(model_name="qwen2.5-coder:7b")
         self.sandbox = DockerSandbox()
 
+    def filter_non_test_findings(self, findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Test dosyalarını ve sadece import uyarılarını (B404) tarama sonuçlarından eler."""
+        valid = []
+        for f in findings:
+            fn = Path(f.get("filename", "")).name.lower()
+            test_id = f.get("test_id", "")
+            # Bilgi amaçlı import uyarıları (B404 subprocess importu gibi) ve test dosyaları elenir
+            if test_id in ["B404", "B410"]:
+                continue
+            if not (fn.startswith("test_") or fn.endswith("_test.py") or "conftest" in fn):
+                valid.append(f)
+        return valid
+
     def run(self) -> Dict[str, Any]:
         print("\n" + "="*70)
-        print("🚀 OTONOM VE DOĞRULANABİLİR GÜVENLİK YAMA MOTORU BAŞLATILIYOR")
+        print("🚀 OTONOM VE ÇOKLU-ZAFİYET ONARIM MOTORU BAŞLATILIYOR")
         print("="*70)
-
-        # Orijinal kodun yedeğini hafızada tut
-        with open(self.target_file, "r", encoding="utf-8") as f:
-            original_code = f.read()
 
         # -------------------------------------------------------------
         # 1. FAZ: BAŞLANGIÇ DURUM TEYİDİ (BASELINE SANITY CHECK)
@@ -45,107 +54,118 @@ class SelfHealingController:
             return {"status": "ALREADY_SECURE"}
 
         # -------------------------------------------------------------
-        # 2. FAZ: SAST VE AST İLE HATA LOKALİZASYONU
+        # 2. FAZ: KÖRLEMESİNE SAST TARAMASI (HİBRİT: BANDIT + SEMGREP)
         # -------------------------------------------------------------
-        print("\n[FAZ 2] Statik Güvenlik Analizi ve Kapsam Kırpma...")
-        findings = self.sast.scan_with_bandit()
+        print("\n[FAZ 2] Körlemesine Statik Analiz (Bandit + Semgrep Hibrit Motor)...")
+        
+        # Eğer dosya adı verilmediyse tüm klasörü tara
+        scan_target = (self.task_dir / self.target_file_name) if self.target_file_name else self.task_dir
+        raw_findings = self.sast.scan(scan_target)
+        findings = self.filter_non_test_findings(raw_findings)
+
         if not findings:
             print("  [!] SAST kural ihlali tespit edemedi.")
             return {"status": "NO_SAST_FINDINGS"}
 
-        finding = findings[0]
-        print(f"  ├─ Tespit Edilen Zafiyet: {finding['cwe']} ({finding['test_id']})")
-        print(f"  ├─ Teşhis               : {finding['issue_text']}")
-        print(f"  └─ Hedef Satır          : {finding['line_number']}")
-
-        pruner = ASTContextPruner(str(self.target_file))
-        chunk = pruner.prune_enclosing_function(finding["line_number"])
-        if not chunk:
-            print("  [!] AST fonksiyon kapsamını belirleyemedi.")
-            return {"status": "AST_PRUNE_ERROR"}
-
-        print(f"  [*] AST Kapsamı Kırpıldı: '{chunk['function_name']}' ({chunk['start_line']} - {chunk['end_line']}. satırlar)")
+        print(f"  [*] Toplam {len(findings)} zafiyet otomatik olarak keşfedildi:")
+        for idx, f in enumerate(findings, 1):
+            rel_file = Path(f['filename']).name
+            print(f"      {idx}. [{f['engine']}] {rel_file}:{f['line_number']} -> {f['cwe']} ({f['test_id']})")
 
         # -------------------------------------------------------------
-        # 3. FAZ: KENDİ KENDİNİ İYİLEŞTİRME DÖNGÜSÜ (SELF-HEALING LOOP)
+        # 3. FAZ: İTERATİF ÇOKLU FONKSİYON ONARIM DÖNGÜSÜ
         # -------------------------------------------------------------
-        print(f"\n[FAZ 3] Kendi Kendini İyileştirme Döngüsü Başlatılıyor (Maks {self.max_turns} Tur)...")
+        print(f"\n[FAZ 3] İteratif Cerrahi Onarım Başlatılıyor (Zafiyet Sayısı: {len(findings)})...")
         feedback = None
         repaired_successfully = False
-        final_patched_code = None
 
         for turn in range(1, self.max_turns + 1):
-            print(f"\n---> [TUR {turn}/{self.max_turns}] <---")
-            print("  [*] Qwen modeline prompt iletiliyor (Ollama / qwen2.5-coder:7b)...")
-            prompt = self.synthesizer.generate_repair_prompt(chunk, finding, feedback=feedback)
-            
-            start_t = time.time()
-            raw_response = self.synthesizer.query_ollama(prompt)
-            duration = time.time() - start_t
-            
-            patch_code = self.synthesizer.extract_code_block(raw_response)
-            print(f"  [*] Yama üretildi ({duration:.2f} saniye).")
-            print("  [*] Yama kaynak dosyaya uygulanıyor...")
+            print(f"\n---> [GENEL ONARIM TURU {turn}/{self.max_turns}] <---")
 
-            # Dosyaya yamayı uygula
-            self.synthesizer.apply_patch_to_file(
-                str(self.target_file),
-                chunk["start_line"],
-                chunk["end_line"],
-                patch_code
-            )
+            # Her zafiyet için sırayla cerrahi AST kırpması ve yama üretimi
+            for idx, finding in enumerate(findings, 1):
+                target_file_path = Path(finding["filename"])
+                if not target_file_path.is_absolute():
+                    target_file_path = Path.cwd() / target_file_path
 
-            # Docker Sandbox içinde Çift Doğrulama koş
-            print("  [*] Docker Sealed Sandbox içinde Çift Doğrulama (Pytest) çalıştırılıyor...")
+                print(f"\n  [*] [{idx}/{len(findings)}] Zafiyet Hedefe Alınıyor: {finding['cwe']} ({finding['test_id']})")
+                print(f"      Dosya: {target_file_path.name} | Satır: {finding['line_number']}")
+
+                pruner = ASTContextPruner(str(target_file_path))
+                chunk = pruner.prune_enclosing_function(finding["line_number"])
+                if not chunk:
+                    print(f"      [!] Satır {finding['line_number']} için fonksiyon kapsamı bulunamadı, atlanıyor.")
+                    continue
+
+                print(f"      AST Kapsamı Kırpıldı: '{chunk['function_name']}' ({chunk['start_line']} - {chunk['end_line']}. satırlar)")
+                print(f"      Qwen modeline gönderiliyor...")
+
+                prompt = self.synthesizer.generate_repair_prompt(chunk, finding, feedback=feedback)
+                start_t = time.time()
+                raw_response = self.synthesizer.query_ollama(prompt)
+                duration = time.time() - start_t
+
+                patch_code = self.synthesizer.extract_code_block(raw_response)
+                print(f"      Yama üretildi ({duration:.2f} sn). Dosyaya uygulanıyor...")
+
+                # Güncel satırları tekrar hesapla
+                pruner_recheck = ASTContextPruner(str(target_file_path))
+                current_chunk = pruner_recheck.prune_enclosing_function(finding["line_number"])
+                if current_chunk:
+                    self.synthesizer.apply_patch_to_file(
+                        str(target_file_path),
+                        current_chunk["start_line"],
+                        current_chunk["end_line"],
+                        patch_code
+                    )
+
+            # Tüm yamalar uygulandıktan sonra Docker Sandbox Çift Doğrulama
+            print("\n  [*] Tüm yamalar uygulandı. Docker Sealed Sandbox Çift Doğrulama Koşuluyor...")
             test_res = self.sandbox.run_dual_verification(str(self.task_dir))
-            
             func_ok = test_res["func_pass"]
             sec_ok = test_res["sec_pass"]
 
-            print(f"  ├─ func_test (Orijinal İşlev) : {'PASS ✅' if func_ok else 'FAIL ❌'}")
-            print(f"  └─ sec_test (Zafiyet Kapatma): {'PASS ✅' if sec_ok else 'FAIL ❌'}")
+            print(f"  ├─ func_test (Tüm Orijinal İşlevler) : {'PASS ✅' if func_ok else 'FAIL ❌'}")
+            print(f"  └─ sec_test  (Tüm Exploit Testleri)  : {'PASS ✅' if sec_ok else 'FAIL ❌'}")
 
             if func_ok and sec_ok:
                 print("\n" + "*"*70)
-                print("🎯 [BAŞARI] ÇİFT DOĞRULAMA GEÇİLDİ! KOD HEM GÜVENLİ HEM DE İŞLEVSEL.")
+                print("🎯 [TAM BAŞARI] TÜM ZAFİYETLER ONARILDI! ÇİFT DOĞRULAMA GEÇİLDİ.")
                 print("*"*70)
                 repaired_successfully = True
-                with open(self.target_file, "r", encoding="utf-8") as f:
-                    final_patched_code = f.read()
                 break
             else:
-                # Geri bildirim hazırla
                 errors = []
                 if not func_ok:
-                    errors.append(f"Fonksiyonellik Testi Hatası (Regresyon):\n{test_res['func_output']}")
+                    errors.append(f"Regresyon Hatası:\n{test_res['func_output']}")
                 if not sec_ok:
-                    errors.append(f"Güvenlik Testi Hatası (Açık Kapanmadı):\n{test_res['sec_output']}")
+                    errors.append(f"Exploit Engellenemedi:\n{test_res['sec_output']}")
                 feedback = "\n\n".join(errors)
-                print(f"  [!] Tur {turn} başarısız. Hata geri bildirimi Qwen'e aktarılacak.")
+                print(f"  [!] Tur {turn} tamamlanamadı. Hata geri bildirimi sonraki tura aktarılacak.")
 
-        # Orijinal dosyayı geri yüklemek isterseniz veya sonucu kaydetmek:
-        result_report = {
-            "task_file": str(self.target_file),
+        # Raporlama
+        report = {
+            "task_dir": str(self.task_dir),
+            "total_findings": len(findings),
+            "findings": findings,
             "repaired": repaired_successfully,
-            "turns_used": turn,
-            "cwe": finding["cwe"],
-            "rule_id": finding["test_id"],
-            "original_code": original_code,
-            "final_patched_code": final_patched_code
+            "turns_used": turn
         }
-
-        # Sonucu JSON olarak kaydet
-        output_json_path = self.task_dir / "sonuc.json"
-        with open(output_json_path, "w", encoding="utf-8") as f:
-            json.dump(result_report, f, indent=2, ensure_ascii=False)
-
-        print(f"\n[Rapor] Sonuç dosyası kaydedildi: {output_json_path}")
-        return result_report
+        out_file = self.task_dir / "sonuc.json"
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+        print(f"\n[Rapor] Sonuç kaydedildi: {out_file}")
+        return report
 
 if __name__ == "__main__":
+    import sys
+    task_dir_arg = sys.argv[1] if len(sys.argv) > 1 else "pipeline/sample_task"
+    # Dosya adı artık OPSİYONELDİR! Verilmezse klasör taranır.
+    target_file_arg = sys.argv[2] if len(sys.argv) > 2 else None
+
     controller = SelfHealingController(
-        task_dir="pipeline/sample_task",
-        target_file="app.py",
+        task_dir=task_dir_arg,
+        target_file=target_file_arg,
         max_turns=3
     )
     controller.run()

@@ -1,0 +1,16 @@
+{
+  "scenario": "Self-Healing Multi-Turn Validation",
+  "turn_1": {
+    "patch": "def get_user_by_username(conn, username: str):\n    cursor = conn.cursor()\n    # Açık kapatıldı (parametreli) ANCAK yanlışlıkla sadece username seçildi! (Regresyon)\n    query = \"SELECT username FROM users WHERE username = ?\"\n    cursor.execute(query, (username,))\n    return cursor.fetchone()",
+    "func_pass": false,
+    "sec_pass": true,
+    "error_observed": "IndexError: tuple index out of range (user[2] email not selected)"
+  },
+  "turn_2": {
+    "feedback_provided": true,
+    "patch": "def get_user_by_username(conn, username: str):\n    cursor = conn.cursor()\n    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n    cursor.execute(query, (username,))\n    return cursor.fetchone()",
+    "func_pass": true,
+    "sec_pass": true,
+    "resolved": true
+  }
+}

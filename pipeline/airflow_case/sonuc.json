@@ -1,0 +1,18 @@
+{
+  "task_dir": "pipeline\\airflow_case",
+  "total_findings": 1,
+  "findings": [
+    {
+      "engine": "Semgrep",
+      "filename": "pipeline\\airflow_case\\hive_hook.py",
+      "line_number": 22,
+      "test_id": "hive-cli-command-injection",
+      "cwe": "CWE-78",
+      "severity": "ERROR",
+      "issue_text": "OS Command Injection Risk (CWE-78): Unsanitized schema concatenated into HQL command script allows shell escape via ';' or '!'. Validate schema: if '!' in schema or ';' in schema, raise RuntimeError('The schema contains invalid characters (!;)').",
+      "code": "requires login"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 2
+}

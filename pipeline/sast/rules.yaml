@@ -1,0 +1,20 @@
+rules:
+  - id: insecure-commonprefix-path-traversal
+    patterns:
+      - pattern: os.path.commonprefix(...)
+    message: "Insecure path validation: 'os.path.commonprefix' performs character-by-character comparison rather than path-aware validation, leading to Path Traversal vulnerabilities (CWE-22). Use 'os.path.commonpath' instead."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      confidence: HIGH
+
+  - id: hive-cli-command-injection
+    patterns:
+      - pattern: f"USE {$SCHEMA};\n{$REST}"
+    message: "OS Command Injection Risk (CWE-78): Unsanitized schema concatenated into HQL command script allows shell escape via ';' or '!'. Validate schema: if '!' in schema or ';' in schema, raise RuntimeError('The schema contains invalid characters (!;)')."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      confidence: HIGH

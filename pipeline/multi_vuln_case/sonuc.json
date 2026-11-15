@@ -1,0 +1,28 @@
+{
+  "task_dir": "pipeline\\multi_vuln_case",
+  "total_findings": 2,
+  "findings": [
+    {
+      "engine": "Bandit",
+      "filename": ".\\pipeline\\multi_vuln_case\\service.py",
+      "line_number": 12,
+      "test_id": "B608",
+      "cwe": "CWE-89",
+      "severity": "MEDIUM",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "code": "11     cursor = conn.cursor()\n12     query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n13     cursor.execute(query)\n"
+    },
+    {
+      "engine": "Semgrep",
+      "filename": "pipeline\\multi_vuln_case\\service.py",
+      "line_number": 23,
+      "test_id": "insecure-commonprefix-path-traversal",
+      "cwe": "CWE-22",
+      "severity": "ERROR",
+      "issue_text": "Insecure path validation: 'os.path.commonprefix' performs character-by-character comparison rather than path-aware validation, leading to Path Traversal vulnerabilities (CWE-22). Use 'os.path.commonpath' instead.",
+      "code": "requires login"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1
+}
