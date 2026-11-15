@@ -1,0 +1,56 @@
+@startuml
+autonumber
+skinparam BoxPadding 10
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+<style>
+participant {
+  Padding 10
+}
+</style>
+
+actor "SusVibes Ingestion" as Benchmark
+participant "SAST Engine\n(Semgrep / Bandit)" as SAST #F9F0FF
+participant "AST Context Pruner" as Pruner
+participant "Patch Synthesizer\n(Qwen)" as Coder
+
+box "Docker Sealed Sandbox" #E8F5E9
+    participant "func.txt\n(Unit Tests)" as FuncTest
+    participant "sec.txt\n(Exploit Tests)" as SecTest
+end box
+
+participant "Self-Healing Controller" as Controller #FFF3E0
+
+== 1. Statik Zafiyet Tespiti ve Konumlandırma (Fault Localization) ==
+Benchmark -> SAST : Orijinal Kaynak Kodu Tara
+SAST -> SAST : Statik Güvenlik Analizi Koş
+SAST --> Pruner : Zafiyet Raporu (Kural İhlali, Dosya ve Satır No)
+
+== 2. Hedefe Yönelik Kapsam Kırpma ==
+Pruner -> Pruner : SAST'ın İşaret Ettiği Fonksiyonu Ayıkla
+Pruner -> Coder : Kırpılmış Kod Bloğu + SAST Hata Teşhis Raporu
+
+== 3. Kendi Kendini İyileştirme Döngüsü [Tur <= 3] ==
+loop Yama Üretim ve Dinamik Doğrulama
+    Coder -> Controller : Üretilen Güvenli Yama Adayı
+    
+    Controller -> FuncTest : Yamayı Uygula & Birim Testleri Koş
+    Controller -> SecTest : Yamayı Uygula & Exploit Testi Koş
+
+    par Docker İçinde Çift Doğrulama (Dual-Verification)
+        FuncTest -> FuncTest : pytest func.txt
+    also
+        SecTest -> SecTest : pytest sec.txt
+    end
+
+    FuncTest --> Controller : func_status (İşlevsellik)
+    SecTest --> Controller : sec_status (Güvenlik)
+
+    alt Regresyon veya Açık Kapanmadı (func=FAIL veya sec=FAIL)
+        Controller --> Coder : Hata Bildirimi (Traceback / Exploit Çıktısı)
+    else Çift Doğrulama Başarılı (func=PASS ve sec=PASS)
+        Controller --> Benchmark : Doğrulanmış Sağlam Yama (sonuc.json)
+    end
+end
+@enduml

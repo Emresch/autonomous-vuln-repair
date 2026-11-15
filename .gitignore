@@ -1,11 +1,24 @@
-# Python & Test önbellekleri
+# Python önbellek ve test dosyaları
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .pytest_cache/
+.coverage
+htmlcov/
 
-# Büyük PDF ve Word raporları (GitHub'da yer kaplamasın)
+# Sanal ortamlar
+.venv/
+venv/
+ENV/
+env/
+
+# Büyük PDF ve doküman dosyaları (Depoyu hafif tutmak için)
 *.pdf
 *.docx
+*.pptx
 
-# Docker geçici dosyaları
+# Loglar ve geçici çıktılar
 *.log
+.DS_Store
+Thumbs.db
