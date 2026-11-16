@@ -21,8 +21,8 @@ def hash_username(username: str) -> str:
 
 def get_user_by_username(conn, username: str):
     cursor = conn.cursor()
-    query = "SELECT id, username, email FROM users WHERE username = ?"
-    cursor.execute(query, (username,))
+    query = f"SELECT id, username, email FROM users WHERE username = '{username}'"
+    cursor.execute(query)
     return cursor.fetchone()
 
 def count_total_users(conn) -> int:
