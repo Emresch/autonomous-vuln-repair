@@ -18,4 +18,4 @@ def test_command_injection_exploit_prevention():
         pytest.fail(f"KRİTİK GÜVENLİK AÇIĞI (RCE / CWE-78)! Zararlı komut engellenemedi: {res['generated_script']}")
     except (RuntimeError, ValueError) as exc:
         # Beklenen durum: Güvenli yama zararlı karakterleri reddetmelidir.
-        assert any(c in str(exc) for c in ["!", ";", "invalid", "characters"]), f"Beklenmeyen hata: {exc}"
+        assert any(c in str(exc).lower() for c in ["!", ";", "invalid", "characters"]), f"Beklenmeyen hata: {exc}"

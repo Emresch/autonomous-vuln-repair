@@ -1,0 +1,4 @@
+# Core pipeline dependencies (cross-platform: Windows & macOS)
+bandit>=1.7.9
+semgrep>=1.90.0
+pytest>=8.0.0

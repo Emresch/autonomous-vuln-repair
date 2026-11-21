@@ -1,18 +1,81 @@
 {
-  "task_dir": "pipeline\\starlette_case",
+  "status": "REPAIRED",
+  "task_dir": "pipeline/starlette_case",
+  "backend": "ollama",
+  "model_name": "qwen2.5-coder:7b",
+  "environment": {
+    "os": "Darwin",
+    "os_release": "24.6.0",
+    "arch": "arm64",
+    "python_version": "3.13.5",
+    "hardware_hint": "Apple Silicon (arm64)"
+  },
   "total_findings": 1,
   "findings": [
     {
-      "engine": "Semgrep",
-      "filename": "pipeline\\starlette_case\\staticfiles.py",
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.insecure-commonprefix-path-traversal",
+      "cwe_id": "CWE-22",
+      "file_path": "pipeline/starlette_case/staticfiles.py",
       "line_number": 21,
-      "test_id": "insecure-commonprefix-path-traversal",
+      "end_line_number": 21,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "21             if os.path.commonprefix([full_path, directory]) != directory:",
+      "message": "Insecure path boundary check (CWE-22): 'os.path.commonprefix' (like raw 'str.startswith') compares paths character-by-character rather than by directory segments, allowing sibling-prefix Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed'). Use path-segment-aware 'os.path.commonpath([resolved_target, resolved_base]) == resolved_base' instead.",
+      "engine": "Semgrep",
+      "filename": "pipeline/starlette_case/staticfiles.py",
+      "test_id": "pipeline.sast.insecure-commonprefix-path-traversal",
       "cwe": "CWE-22",
-      "severity": "ERROR",
-      "issue_text": "Insecure path validation: 'os.path.commonprefix' performs character-by-character comparison rather than path-aware validation, leading to Path Traversal vulnerabilities (CWE-22). Use 'os.path.commonpath' instead.",
-      "code": "requires login"
+      "issue_text": "Insecure path boundary check (CWE-22): 'os.path.commonprefix' (like raw 'str.startswith') compares paths character-by-character rather than by directory segments, allowing sibling-prefix Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed'). Use path-segment-aware 'os.path.commonpath([resolved_target, resolved_base]) == resolved_base' instead.",
+      "code": "21             if os.path.commonprefix([full_path, directory]) != directory:"
     }
   ],
   "repaired": true,
-  "turns_used": 1
+  "turns_used": 1,
+  "total_duration_seconds": 20.046,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/starlette_case/staticfiles.py::StaticFiles.lookup_path": "    def lookup_path(\n        self, path: str\n    ) -> typing.Tuple[str, typing.Optional[os.stat_result]]:\n        for directory in self.all_directories:\n            joined_path = os.path.join(directory, path)\n            if self.follow_symlink:\n                full_path = os.path.abspath(joined_path)\n            else:\n                full_path = os.path.realpath(joined_path)\n            directory = os.path.realpath(directory)\n            if os.path.commonpath([full_path, directory]) != directory:\n                continue\n            try:\n                return full_path, os.stat(full_path)\n            except (FileNotFoundError, NotADirectoryError):\n                continue\n        return \"\", None"
+  },
+  "unified_diff": {
+    "pipeline/starlette_case/staticfiles.py": "--- a/pipeline/starlette_case/staticfiles.py\n+++ b/pipeline/starlette_case/staticfiles.py\n@@ -18,7 +18,7 @@\n             else:\n                 full_path = os.path.realpath(joined_path)\n             directory = os.path.realpath(directory)\n-            if os.path.commonprefix([full_path, directory]) != directory:\n+            if os.path.commonpath([full_path, directory]) != directory:\n                 continue\n             try:\n                 return full_path, os.stat(full_path)\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": null,
+    "mean_entropy": null
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 17.171,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/starlette_case/staticfiles.py::StaticFiles.lookup_path",
+          "function_name": "StaticFiles.lookup_path",
+          "file": "pipeline/starlette_case/staticfiles.py",
+          "patch_code": "    def lookup_path(\n        self, path: str\n    ) -> typing.Tuple[str, typing.Optional[os.stat_result]]:\n        for directory in self.all_directories:\n            joined_path = os.path.join(directory, path)\n            if self.follow_symlink:\n                full_path = os.path.abspath(joined_path)\n            else:\n                full_path = os.path.realpath(joined_path)\n            directory = os.path.realpath(directory)\n            if os.path.commonpath([full_path, directory]) != directory:\n                continue\n            try:\n                return full_path, os.stat(full_path)\n            except (FileNotFoundError, NotADirectoryError):\n                continue\n        return \"\", None",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "ollama",
+            "model_name": "qwen2.5-coder:7b",
+            "duration_seconds": 16.257,
+            "token_count": 142,
+            "confidence_score": null,
+            "entropy": null,
+            "attention_summary": null
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": "..                                                                       [100%]\n2 passed in 0.02s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.01s",
+      "error_feedback": null
+    }
+  ]
 }

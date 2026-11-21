@@ -1,12 +1,16 @@
-import time
+import argparse
 import json
 from pathlib import Path
-from typing import List, Dict, Any
+import time
+from typing import Any, Dict, List, Optional
 
+from pipeline.benchmark.benchmark_ingestion import BenchmarkIngestion
+from pipeline.config import AVRConfig, detect_runtime_environment
 from pipeline.controller import SelfHealingController
 
 # ==============================================================================
-# GÖREVLERİN ORİJİNAL (ZAFİYETLİ) BAŞLANGIÇ KODLARI
+# KONTROLLÜ MİKRO-KIYASLAMA (CONTROLLED MICRO-BENCHMARK) BAŞLANGIÇ KODLARI
+# Gerçek SusVibes CVE'lerinden izole edilmiş ve sentetik çoklu-açık görevleri
 # ==============================================================================
 SAMPLE_TASK_VULN_CODE = """import sqlite3
 import hashlib
@@ -158,7 +162,10 @@ BENCHMARK_SUITE = [
         "dir": "pipeline/sample_task",
         "file": "app.py",
         "reset_code": SAMPLE_TASK_VULN_CODE,
-        "type": "CWE-89 (SQL Injection)"
+        "type": "CWE-89 (SQL Injection)",
+        "provenance": "Synthetic Micro-Benchmark",
+        "cve_id": None,
+        "susvibes_instance_id": None,
     },
     {
         "id": "TASK-2",
@@ -166,7 +173,10 @@ BENCHMARK_SUITE = [
         "dir": "pipeline/starlette_case",
         "file": "staticfiles.py",
         "reset_code": STARLETTE_VULN_CODE,
-        "type": "CWE-22 (Path Traversal)"
+        "type": "CWE-22 (Path Traversal)",
+        "provenance": "Isolated SusVibes Real CVE",
+        "cve_id": "CVE-2023-29159",
+        "susvibes_instance_id": "encode__starlette_1797de464124b090f10cf570441e8292936d63e3",
     },
     {
         "id": "TASK-3",
@@ -174,7 +184,10 @@ BENCHMARK_SUITE = [
         "dir": "pipeline/airflow_case",
         "file": "hive_hook.py",
         "reset_code": AIRFLOW_VULN_CODE,
-        "type": "CWE-78 (OS Command Inj / RCE)"
+        "type": "CWE-78 (OS Command Inj / RCE)",
+        "provenance": "Isolated SusVibes Real CVE",
+        "cve_id": "CVE-2022-41131",
+        "susvibes_instance_id": None,
     },
     {
         "id": "TASK-4",
@@ -182,97 +195,211 @@ BENCHMARK_SUITE = [
         "dir": "pipeline/multi_vuln_case",
         "file": "service.py",
         "reset_code": MULTI_VULN_CODE,
-        "type": "CWE-89 + CWE-22 (Çoklu Açık)"
-    }
+        "type": "CWE-89 + CWE-22 (Çoklu Açık)",
+        "provenance": "Synthetic Multi-Vuln Case",
+        "cve_id": None,
+        "susvibes_instance_id": None,
+    },
 ]
 
-def reset_task_file(task_info: Dict[str, Any]):
+
+def reset_task_file(task_info: Dict[str, Any]) -> None:
     """Görevin kaynak dosyasını orijinal zafiyetli haline sıfırlar."""
     file_path = Path(task_info["dir"]) / task_info["file"]
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(task_info["reset_code"])
 
-def print_summary_table(results: List[Dict[str, Any]], total_elapsed: float):
-    """Terminalde jüriye sunulabilecek profesyonel özet tablosunu basar."""
-    print("\n" + "="*95)
-    print("🏆 OTONOM GÜVENLİK YAMA MOTORU - SUSVIBES & CVE BENCHMARK DEĞERLENDİRME RAPORU")
-    print("="*95)
-    
-    header = f"{'GÖREV ADI':<26} | {'ZAFİYET TÜRÜ':<28} | {'MOTOR':<10} | {'TUR':<4} | {'SÜRE':<8} | {'DURUM'}"
+
+def print_summary_table(
+    results: List[Dict[str, Any]],
+    total_elapsed: float,
+    config: AVRConfig,
+    env_info: Dict[str, str],
+) -> None:
+    """Terminalde jüriye sunulabilecek özet kıyaslama tablosunu basar."""
+    print("\n" + "=" * 102)
+    print("🏆 OTONOM GÜVENLİK YAMA MOTORU - CONTROLLED MICRO-BENCHMARK DEĞERLENDİRME RAPORU")
+    print("=" * 102)
+
+    header = (
+        f"{'GÖREV ADI':<26} | {'ZAFİYET TÜRÜ':<28} | {'MOTOR':<14} | "
+        f"{'TUR':<4} | {'SÜRE':<8} | {'DURUM'}"
+    )
     print(header)
-    print("-" * 95)
+    print("-" * 102)
 
     passed_count = 0
     for r in results:
         status_str = "BAŞARILI ✅" if r["repaired"] else "BAŞARISIZ ❌"
         if r["repaired"]:
             passed_count += 1
-        engines_str = ",".join(r["engines"]) if r["engines"] else "None"
+        engines_str = ",".join(sorted(r["engines"])) if r["engines"] else "None"
         time_str = f"{r['duration']:.2f}s"
-        row = f"{r['name']:<26} | {r['type']:<28} | {engines_str:<10} | {r['turns']:<4} | {time_str:<8} | {status_str}"
+        row = (
+            f"{r['name']:<26} | {r['type']:<28} | {engines_str:<14} | "
+            f"{r['turns']:<4} | {time_str:<8} | {status_str}"
+        )
         print(row)
 
-    print("-" * 95)
-    success_rate = (passed_count / len(results)) * 100
+    print("-" * 102)
+    success_rate = (passed_count / len(results)) * 100 if results else 0.0
+    verify_mode = "Paralel (ThreadPoolExecutor)" if config.parallel_verification else "Sıralı"
     print(f"Toplam Başarı Oranı : %{success_rate:.1f} ({passed_count}/{len(results)} Görev Onarıldı)")
     print(f"Toplam Süre         : {total_elapsed:.2f} saniye")
-    print(f"Yerel Model         : Qwen-2.5-Coder:7b (Ollama / RTX 3050)")
-    print("="*95 + "\n")
+    print(f"LLM Arka Ucu / Model: {config.backend} / {config.model_name}")
+    print(f"Doğrulama Modu      : {verify_mode} | Sealed Sandbox (--network none, :ro)")
+    print(f"Çalışma Ortamı      : {env_info['hardware_hint']} | Python {env_info['python_version']}")
+    print("=" * 102 + "\n")
 
-def run_all_benchmarks():
-    print("\n" + "#"*70)
-    print("🚀 TÜM BENCHMARK GÖREVLERİ SIRAYLA ÇALIŞTIRILIYOR")
-    print("#"*70)
+
+def run_all_benchmarks(
+    config: Optional[AVRConfig] = None,
+    task_filter: Optional[str] = None,
+) -> Dict[str, Any]:
+    cfg = config or AVRConfig()
+    env_info = detect_runtime_environment()
+    ingestion = BenchmarkIngestion()
+    susvibes_stats = ingestion.get_dataset_stats(allow_download=False)
+
+    tasks_to_run = BENCHMARK_SUITE
+    if task_filter:
+        needle = task_filter.lower()
+        tasks_to_run = [
+            t
+            for t in BENCHMARK_SUITE
+            if needle in t["id"].lower() or needle in t["name"].lower() or needle in t["dir"].lower()
+        ]
+        if not tasks_to_run:
+            raise ValueError(f"'{task_filter}' filtresine uyan benchmark görevi bulunamadı.")
+
+    print("\n" + "#" * 76)
+    print("🚀 CONTROLLED MICRO-BENCHMARK GÖREVLERİ ÇALIŞTIRILIYOR")
+    if susvibes_stats.get("available"):
+        print(
+            f"   SusVibes Veri Kümesi Bağlandı: {susvibes_stats['total_tasks']} toplam kayıt "
+            f"({susvibes_stats['dataset_file']})"
+        )
+    print("#" * 76)
 
     overall_start = time.time()
-    results = []
+    results: List[Dict[str, Any]] = []
 
-    for task in BENCHMARK_SUITE:
-        print(f"\n[+] Görev Hazırlanıyor: {task['name']} ({task['type']})...")
+    for task in tasks_to_run:
+        susvibes_meta = None
+        if task.get("susvibes_instance_id") or task.get("cve_id"):
+            susvibes_meta = ingestion.get_task_metadata(
+                instance_id=task.get("susvibes_instance_id"),
+                cve_id=task.get("cve_id"),
+                allow_download=False,
+            )
+
+        print(f"\n[+] Görev Hazırlanıyor: {task['name']} ({task['type']}) [{task['provenance']}]...")
+        if susvibes_meta:
+            print(
+                f"    └─ SusVibes Referansı: {susvibes_meta['project']} "
+                f"({susvibes_meta['cve_id']} | {susvibes_meta['instance_id']})"
+            )
+
         reset_task_file(task)
 
         task_start = time.time()
         controller = SelfHealingController(
             task_dir=task["dir"],
             target_file=task["file"],
-            max_turns=3
+            config=cfg,
         )
         task_report = controller.run()
         duration = time.time() - task_start
 
         findings = task_report.get("findings", [])
-        if not findings and "rule_id" in task_report:
-            engines = ["Bandit"]
-        else:
-            engines = list(set(f.get("engine", "SAST") for f in findings))
+        engines = sorted({f.get("engine", "SAST") for f in findings}) if findings else []
 
         results.append({
             "id": task["id"],
             "name": task["name"],
             "type": task["type"],
+            "provenance": task["provenance"],
+            "susvibes_metadata": susvibes_meta,
             "engines": engines,
+            "status": task_report.get("status"),
             "repaired": task_report.get("repaired", False),
-            "turns": task_report.get("turns_used", 1),
-            "duration": duration
+            "turns": task_report.get("turns_used", 0),
+            "duration": round(duration, 3),
+            "rolled_back_to_original": task_report.get("rolled_back_to_original", False),
+            "llm_metrics_summary": task_report.get("llm_metrics_summary", {}),
+            "unified_diff": task_report.get("unified_diff", {}),
         })
 
     overall_elapsed = time.time() - overall_start
+    print_summary_table(results, overall_elapsed, cfg, env_info)
 
-    # Özet tablosunu bas
-    print_summary_table(results, overall_elapsed)
+    summary_payload = {
+        "benchmark_mode": "controlled_micro_benchmark",
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "backend": cfg.backend,
+        "model_name": cfg.model_name,
+        "parallel_verification": cfg.parallel_verification,
+        "environment": env_info,
+        "susvibes_dataset": susvibes_stats,
+        "total_tasks": len(results),
+        "success_rate": f"%{(sum(1 for r in results if r['repaired']) / len(results)) * 100:.1f}",
+        "total_time_seconds": round(overall_elapsed, 3),
+        "results": results,
+    }
 
-    # Sonuçları JSON olarak kaydet
     out_json = Path("pipeline/benchmark_summary.json")
     with open(out_json, "w", encoding="utf-8") as f:
-        json.dump({
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "total_tasks": len(results),
-            "success_rate": f"%{(sum(1 for r in results if r['repaired']) / len(results)) * 100:.1f}",
-            "total_time_seconds": overall_elapsed,
-            "results": results
-        }, f, indent=2, ensure_ascii=False)
+        json.dump(summary_payload, f, indent=2, ensure_ascii=False)
 
-    print(f"[Rapor] Toplu sonuçlar kaydedildi: {out_json}")
+    print(f"[Rapor] Toplu sonuçlar kaydedildi: {out_json.as_posix()}")
+    return summary_payload
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="AVR Controlled Micro-Benchmark & SusVibes Ingestion Runner"
+    )
+    parser.add_argument("--backend", choices=["ollama", "transformers"], default=None)
+    parser.add_argument("--model", default=None, help="Kullanılacak LLM modeli")
+    parser.add_argument("--max-turns", type=int, default=None)
+    parser.add_argument("--task", default=None, help="Sadece eşleşen görevi çalıştır (örn. TASK-2, airflow)")
+    parser.add_argument("--sequential", action="store_true", help="func/sec testlerini sıralı koştur")
+    parser.add_argument(
+        "--list-susvibes",
+        metavar="CWE",
+        nargs="?",
+        const="",
+        default=None,
+        help="SusVibes veri kümesindeki uygun görevleri listele (opsiyonel CWE filtresi, örn. CWE-22)",
+    )
+    args = parser.parse_args()
+
+    if args.list_susvibes is not None:
+        ingestion = BenchmarkIngestion()
+        cwe_filter = args.list_susvibes or None
+        stats = ingestion.get_dataset_stats(allow_download=False)
+        print(f"\nSusVibes Veri Kümesi: {stats}")
+        candidates = ingestion.filter_tasks(cwe=cwe_filter, max_patch_lines=30, allow_download=False)
+        print(f"Eşleşen kompakt görev sayısı ({cwe_filter or 'TÜMÜ'}): {len(candidates)}")
+        for item in candidates[:15]:
+            print(
+                f"  - {item['instance_id']} | {item['project']} | "
+                f"{item['cve_id']} | {item['cwe']} ({item['patch_lines']} satır)"
+            )
+        return
+
+    cfg = AVRConfig()
+    if args.backend:
+        cfg.backend = args.backend
+    if args.model:
+        cfg.model_name = args.model
+    if args.max_turns is not None:
+        cfg.max_turns = args.max_turns
+    if args.sequential:
+        cfg.parallel_verification = False
+
+    run_all_benchmarks(config=cfg, task_filter=args.task)
+
 
 if __name__ == "__main__":
-    run_all_benchmarks()
+    main()

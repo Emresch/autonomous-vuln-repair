@@ -99,26 +99,49 @@ bitirme/
 
 ---
 
-## ⚡ Hızlı Başlangıç
+## ⚡ Hızlı Başlangıç (Windows & macOS)
 
 ### Gereksinimler
-1. **Python 3.11+**
-2. **Docker Desktop** (Engine çalışır durumda olmalıdır)
-3. **Ollama** (`qwen2.5-coder:7b` modeli indirilmiş olmalıdır):
+1. **Python 3.11 – 3.13** *(Semgrep ve PyTorch/Transformers uyumu için 3.13 önerilir)*
+2. **Docker Desktop** (Engine çalışır durumda olmalıdır; hem `amd64` hem Apple Silicon `arm64` desteklenir)
+3. **Ollama** (varsayılan `ollama` arka ucu için `qwen2.5-coder:7b` modeli indirilmiş olmalıdır):
    ```bash
-   ollama run qwen2.5-coder:7b
+   ollama pull qwen2.5-coder:7b
    ```
 
 ### Kurulum ve Çalıştırma
 
-1. **Bağımlılıkları Yükleyin:**
+1. **Sanal Ortam ve Bağımlılıkları Kurun:**
    ```bash
-   pip install bandit pytest
+   # macOS / Linux
+   python3.13 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+
+   # Windows (PowerShell)
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+   *(İleride Hugging Face `transformers` arka ucu için ayrıca `pip install -r requirements-transformers.txt` kurulur.)*
+
+2. **Docker Sealed Sandbox İmajını Derleyin:**
+   ```bash
+   docker build -t bitirme-sandbox pipeline/sandbox
    ```
 
-2. **Pipeline'ı Başlatın:**
+3. **Pipeline'ı Çalıştırın:**
    ```bash
-   python -m pipeline.controller
+   # Tek görev üzerinde çalıştırma
+   python -m pipeline.controller pipeline/sample_task
+
+   # Kontrollü Mikro-Kıyaslama (4 Görev)
+   python -m pipeline.run_all
+
+   # SusVibes veri kümesinden uygun görevleri listeleme
+   python -m pipeline.run_all --list-susvibes CWE-22
+
+   # Birim & bütünlük testlerini çalıştırma
+   pytest
    ```
 
 ---

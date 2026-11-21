@@ -191,13 +191,26 @@ class SASTEngine:
 
         return []
 
+    def _find_tool(self, tool_name: str) -> Optional[str]:
+        """Locates a CLI tool in PATH or inside the active Python environment's bin/Scripts dir."""
+        found = shutil.which(tool_name)
+        if found:
+            return found
+        py_bin_dir = Path(sys.executable).parent
+        for candidate_name in (tool_name, f"{tool_name}.exe"):
+            candidate = py_bin_dir / candidate_name
+            if candidate.exists():
+                return str(candidate)
+        return None
+
     def run_semgrep(
         self, target_path: Optional[str] = None, display_path: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """UML Step 2: Runs Semgrep static analyzer with lightweight memory constraints."""
         resolved_target = str(target_path if target_path else self.target_path)
-        semgrep_bin = shutil.which("semgrep") or "semgrep"
-        cmd = [
+        semgrep_bin = self._find_tool("semgrep") or "semgrep"
+
+        base_cmd = [
             semgrep_bin,
             "scan",
             "--json",
@@ -207,14 +220,13 @@ class SASTEngine:
             "1",
             "--max-memory",
             "1024",
-            "--config",
-            "p/python",
         ]
 
+        configs: List[str] = ["--config", "p/python"]
         if self.rules_file and self.rules_file.exists():
-            cmd.extend(["--config", str(self.rules_file)])
+            configs.extend(["--config", str(self.rules_file)])
 
-        cmd.append(resolved_target)
+        cmd = base_cmd + configs + [resolved_target]
 
         try:
             result = subprocess.run(
@@ -225,6 +237,22 @@ class SASTEngine:
                 timeout=self.timeout,
                 check=False,
             )
+
+            # Fallback to local rules.yaml only if remote p/python ruleset cannot be fetched (e.g. offline)
+            if (not result.stdout.strip() or result.returncode not in (0, 1)) and (
+                self.rules_file and self.rules_file.exists()
+            ):
+                fallback_cmd = base_cmd + ["--config", str(self.rules_file), resolved_target]
+                fallback_res = subprocess.run(
+                    fallback_cmd,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    timeout=self.timeout,
+                    check=False,
+                )
+                if fallback_res.stdout.strip():
+                    result = fallback_res
 
             if not result.stdout.strip():
                 return []

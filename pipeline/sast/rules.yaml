@@ -1,8 +1,22 @@
+# Domain-specific Semgrep rules supplementing Bandit and p/python.
+# Rationale:
+#   1. CWE-22 (insecure-commonprefix-path-traversal): Bandit does not flag
+#      os.path.commonprefix(), which performs character-by-character prefix matching
+#      instead of path-segment boundary checking (e.g., Starlette CVE-2023-29159).
+#   2. CWE-78 (hive-cli-command-injection): Bandit does not model domain-specific
+#      Hive CLI script construction where '!' executes shell commands and ';' chains
+#      statements inside an interpolated HQL USE statement (e.g., Airflow CVE-2022-41131).
+
 rules:
   - id: insecure-commonprefix-path-traversal
     patterns:
       - pattern: os.path.commonprefix(...)
-    message: "Insecure path validation: 'os.path.commonprefix' performs character-by-character comparison rather than path-aware validation, leading to Path Traversal vulnerabilities (CWE-22). Use 'os.path.commonpath' instead."
+    message: >-
+      Insecure path boundary check (CWE-22): 'os.path.commonprefix' (like raw
+      'str.startswith') compares paths character-by-character rather than by
+      directory segments, allowing sibling-prefix Path Traversal bypasses (e.g.
+      '/app/static' matching '/app/static_disallowed'). Use path-segment-aware
+      'os.path.commonpath([resolved_target, resolved_base]) == resolved_base' instead.
     languages: [python]
     severity: ERROR
     metadata:
@@ -10,11 +24,20 @@ rules:
       confidence: HIGH
 
   - id: hive-cli-command-injection
-    patterns:
+    pattern-either:
       - pattern: f"USE {$SCHEMA};\n{$REST}"
-    message: "OS Command Injection Risk (CWE-78): Unsanitized schema concatenated into HQL command script allows shell escape via ';' or '!'. Validate schema: if '!' in schema or ';' in schema, raise RuntimeError('The schema contains invalid characters (!;)')."
+      - pattern: f"USE {$SCHEMA};{$REST}"
+      - pattern: '"USE {};\n{}".format($SCHEMA, ...)'
+      - pattern: '"USE %s;\n%s" % ($SCHEMA, ...)'
+    message: >-
+      OS Command / Statement Injection risk (CWE-78): An unvalidated schema identifier
+      is interpolated directly into a Hive CLI HQL 'USE' script. In Hive CLI, special
+      metacharacters such as ';' (statement separator) and '!' (shell escape operator)
+      enable arbitrary OS command execution. Strictly validate the schema identifier
+      and reject inputs containing disallowed characters before constructing the script.
     languages: [python]
     severity: ERROR
     metadata:
       cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       confidence: HIGH
+

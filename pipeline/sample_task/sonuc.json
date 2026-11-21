@@ -1,18 +1,81 @@
 {
-  "task_dir": "pipeline\\sample_task",
+  "status": "REPAIRED",
+  "task_dir": "pipeline/sample_task",
+  "backend": "ollama",
+  "model_name": "qwen2.5-coder:7b",
+  "environment": {
+    "os": "Darwin",
+    "os_release": "24.6.0",
+    "arch": "arm64",
+    "python_version": "3.13.5",
+    "hardware_hint": "Apple Silicon (arm64)"
+  },
   "total_findings": 1,
   "findings": [
     {
-      "engine": "Bandit",
-      "filename": ".\\pipeline\\sample_task\\app.py",
+      "tool": "bandit",
+      "rule_id": "B608",
+      "cwe_id": "CWE-89",
+      "file_path": "pipeline/sample_task/app.py",
       "line_number": 24,
+      "end_line_number": 24,
+      "severity": "MEDIUM",
+      "confidence": "LOW",
+      "code_snippet": "23     cursor = conn.cursor()\n24     query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n25     cursor.execute(query)",
+      "message": "Possible SQL injection vector through string-based query construction.",
+      "engine": "Bandit",
+      "filename": "pipeline/sample_task/app.py",
       "test_id": "B608",
       "cwe": "CWE-89",
-      "severity": "MEDIUM",
       "issue_text": "Possible SQL injection vector through string-based query construction.",
-      "code": "23     cursor = conn.cursor()\n24     query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n25     cursor.execute(query)\n"
+      "code": "23     cursor = conn.cursor()\n24     query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n25     cursor.execute(query)"
     }
   ],
   "repaired": true,
-  "turns_used": 1
+  "turns_used": 1,
+  "total_duration_seconds": 9.114,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/sample_task/app.py::get_user_by_username": "def get_user_by_username(conn, username: str):\n    cursor = conn.cursor()\n    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n    cursor.execute(query, (username,))\n    return cursor.fetchone()"
+  },
+  "unified_diff": {
+    "pipeline/sample_task/app.py": "--- a/pipeline/sample_task/app.py\n+++ b/pipeline/sample_task/app.py\n@@ -21,8 +21,8 @@\n \n def get_user_by_username(conn, username: str):\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def count_total_users(conn) -> int:\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": null,
+    "mean_entropy": null
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 5.482,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/sample_task/app.py::get_user_by_username",
+          "function_name": "get_user_by_username",
+          "file": "pipeline/sample_task/app.py",
+          "patch_code": "def get_user_by_username(conn, username: str):\n    cursor = conn.cursor()\n    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n    cursor.execute(query, (username,))\n    return cursor.fetchone()",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "ollama",
+            "model_name": "qwen2.5-coder:7b",
+            "duration_seconds": 4.479,
+            "token_count": 52,
+            "confidence_score": null,
+            "entropy": null,
+            "attention_summary": null
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": "...                                                                      [100%]\n3 passed in 0.02s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.01s",
+      "error_feedback": null
+    }
+  ]
 }

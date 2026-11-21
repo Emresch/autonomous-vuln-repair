@@ -1,0 +1,8 @@
+# Optional ML dependencies for Hugging Face transformers backend
+# Install after requirements.txt: pip install -r requirements-transformers.txt
+torch>=2.2.0
+transformers>=4.45.0
+accelerate>=0.34.0
+# 4-bit CUDA quantization (Windows/Linux NVIDIA GPUs, e.g., RTX 3050).
+# Skipped on macOS where Apple Silicon uses MPS (float16/bfloat16) or CPU.
+bitsandbytes>=0.43.0; sys_platform != "darwin"

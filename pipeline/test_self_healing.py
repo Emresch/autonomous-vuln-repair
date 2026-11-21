@@ -1,16 +1,18 @@
 import json
-import time
 from pathlib import Path
-from pipeline.sast.sast_engine import SASTEngine
+from pipeline.config import AVRConfig
 from pipeline.pruner.ast_pruner import ASTContextPruner
-from pipeline.synthesizer.synthesizer import PatchSynthesizer
 from pipeline.sandbox.docker_runner import DockerSandbox
+from pipeline.sast.sast_engine import SASTEngine
+from pipeline.synthesizer.synthesizer import PatchSynthesizer
+
 
 def run_self_healing_demonstration():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🔄 SELF-HEALING (KENDİ KENDİNİ İYİLEŞTİRME) TESTİ BAŞLATILIYOR")
-    print("="*70)
+    print("=" * 70)
 
+    cfg = AVRConfig()
     task_dir = Path("pipeline/sample_task")
     target_file = task_dir / "app.py"
 
@@ -48,12 +50,21 @@ def count_total_users(conn) -> int:
     res = cursor.fetchone()
     return res[0] if res else 0
 """
-    with open(target_file, "w", encoding="utf-8") as f:
-        f.write(original_vulnerable_code)
+    target_file.write_text(original_vulnerable_code, encoding="utf-8")
 
     sast = SASTEngine(str(target_file))
-    sandbox = DockerSandbox()
-    synthesizer = PatchSynthesizer(model_name="qwen2.5-coder:7b")
+    sandbox = DockerSandbox(
+        image_name=cfg.docker_image,
+        timeout=cfg.sandbox_timeout,
+        memory_limit=cfg.sandbox_memory,
+        cpu_limit=cfg.sandbox_cpus,
+        parallel=cfg.parallel_verification,
+    )
+    synthesizer = PatchSynthesizer(
+        model_name=cfg.model_name,
+        base_url=cfg.ollama_base_url,
+        backend=cfg.backend,
+    )
 
     # SAST ve AST
     findings = sast.scan_with_bandit()
@@ -61,16 +72,18 @@ def count_total_users(conn) -> int:
     pruner = ASTContextPruner(str(target_file))
     chunk = pruner.prune_enclosing_function(finding["line_number"])
 
-    print(f"[*] Hedef: {finding['cwe']} ({finding['test_id']}) - Satır {finding['line_number']}")
+    print(
+        f"[*] Hedef: {finding['cwe']} ({finding['test_id']}) - "
+        f"{chunk['qualified_name']} (Satır {finding['line_number']})"
+    )
 
     # -------------------------------------------------------------
     # TUR 1: Kasıtlı Fonksiyonel Regresyon Simülasyonu
-    # LLM açığı kapatıyor fakat kolonları unutup regresyona sebep oluyor!
     # -------------------------------------------------------------
-    print("\n" + "-"*50)
+    print("\n" + "-" * 50)
     print("🚩 [TUR 1] Hatalı Yama Simülasyonu (Regresyon Oluşturuluyor)")
-    print("-"*50)
-    
+    print("-" * 50)
+
     flawed_patch = """def get_user_by_username(conn, username: str):
     cursor = conn.cursor()
     # Açık kapatıldı (parametreli) ANCAK yanlışlıkla sadece username seçildi! (Regresyon)
@@ -80,74 +93,90 @@ def count_total_users(conn) -> int:
 
     print("[Tur 1 Yama İçeriği]:")
     print(flawed_patch)
-    
-    synthesizer.apply_patch_to_file(str(target_file), chunk["start_line"], chunk["end_line"], flawed_patch)
 
-    print("\n[*] Docker Sandbox Testi Koşuluyor...")
+    synthesizer.apply_patch_to_file(
+        str(target_file), chunk["start_line"], chunk["end_line"], flawed_patch
+    )
+
+    print("\n[*] Docker Sealed Sandbox Testi Koşuluyor...")
     t1_res = sandbox.run_dual_verification(str(task_dir))
-    print(f"  ├─ func_test (Birim Testler) : {'PASS ✅' if t1_res['func_pass'] else 'FAIL ❌ (REGRESYON!)'}")
-    print(f"  └─ sec_test (Exploit Testi)  : {'PASS ✅' if t1_res['sec_pass'] else 'FAIL ❌'}")
-
-    print("\n[Docker Test Hata Çıktısı (Stderr / Traceback)]:")
-    print(t1_res["func_output"][:400] + "...")
-
-    # Geri bildirimi hazırla
-    feedback = f"Fonksiyonel regresyon tespit edildi! test_get_existing_user başarısız oldu:\n{t1_res['func_output']}\nLütfen fonksiyonun döndürdüğü veri yapısını (tüm kolonları: id, username, email) koruyunuz."
+    print(
+        f"  ├─ func_test (Birim Testler) : "
+        f"{'PASS ✅' if t1_res['func_pass'] else 'FAIL ❌ (REGRESYON!)'}"
+    )
+    print(
+        f"  └─ sec_test (Exploit Testi)  : "
+        f"{'PASS ✅' if t1_res['sec_pass'] else 'FAIL ❌'}"
+    )
 
     # -------------------------------------------------------------
-    # TUR 2: Qwen'e Geri Bildirim Aktarılıyor ve Düzeltme İsteniyor
+    # TUR 2: Rollback + Çok Turlu Konuşma Geçmişiyle Self-Healing
     # -------------------------------------------------------------
-    print("\n" + "-"*50)
-    print("🤖 [TUR 2] Self-Healing: Hata Çıktısı Qwen'e İletiliyor")
-    print("-"*50)
-    
-    print("[*] Qwen modeline Traceback içeren cerrahi prompt gönderiliyor...")
-    prompt_t2 = synthesizer.generate_repair_prompt(chunk, finding, feedback=feedback)
-    
-    start_t = time.time()
-    resp_t2 = synthesizer.query_ollama(prompt_t2)
-    duration = time.time() - start_t
-    
-    healed_patch = synthesizer.extract_code_block(resp_t2)
-    print(f"[*] Qwen düzeltilmiş yeni yamayı üretti ({duration:.2f} sn):")
+    print("\n" + "-" * 50)
+    print("🤖 [TUR 2] Self-Healing: Rollback + Önceki Yama & Hata Çıktısı Modele İletiliyor")
+    print("-" * 50)
+
+    # Temiz orijinal haline geri al
+    target_file.write_text(original_vulnerable_code, encoding="utf-8")
+
+    messages = synthesizer.build_initial_messages(chunk, [finding])
+    messages.append({"role": "assistant", "content": f"```python\n{flawed_patch}\n```"})
+    feedback = (
+        f"Functional Regression Failure (func_test.py):\n{t1_res['func_output']}\n"
+        "Preserve all returned columns (id, username, email)."
+    )
+    messages.append(synthesizer.build_feedback_message(feedback, turn_number=1))
+
+    gen_res = synthesizer.synthesize(messages)
+    healed_patch = gen_res.extracted_code
+    print(f"[*] Model düzeltilmiş yeni yamayı üretti ({gen_res.duration_seconds:.2f} sn):")
     print(healed_patch)
 
-    # Dosyayı güncelle
-    # Dosyadaki güncel fonksiyon sınırlarını yeniden bul
+    # Fonksiyon adına göre yeniden konumlandır ve sözdizimi doğrulayarak uygula
     pruner_t2 = ASTContextPruner(str(target_file))
-    chunk_t2 = pruner_t2.prune_enclosing_function(finding["line_number"])
-    synthesizer.apply_patch_to_file(str(target_file), chunk_t2["start_line"], chunk_t2["end_line"], healed_patch)
+    chunk_t2 = pruner_t2.prune_function_by_name(
+        chunk["function_name"], class_name=chunk["class_name"]
+    )
+    synthesizer.apply_patch_to_file(
+        str(target_file), chunk_t2["start_line"], chunk_t2["end_line"], healed_patch
+    )
 
-    print("\n[*] Docker Sandbox Testi Tekrar Koşuluyor (Çift Doğrulama)...")
+    print("\n[*] Docker Sealed Sandbox Testi Tekrar Koşuluyor (Çift Doğrulama)...")
     t2_res = sandbox.run_dual_verification(str(task_dir))
     print(f"  ├─ func_test (Birim Testler) : {'PASS ✅' if t2_res['func_pass'] else 'FAIL ❌'}")
     print(f"  └─ sec_test (Exploit Testi)  : {'PASS ✅' if t2_res['sec_pass'] else 'FAIL ❌'}")
 
     if t2_res["all_passed"]:
-        print("\n" + "*"*70)
-        print("🎉 [SELF-HEALING BAŞARILI] Qwen hatayı okudu, regresyonu düzeltti ve testi geçti!")
-        print("*"*70)
+        print("\n" + "*" * 70)
+        print("🎉 [SELF-HEALING BAŞARILI] Model hatayı okudu, regresyonu düzeltti ve testi geçti!")
+        print("*" * 70)
+    else:
+        target_file.write_text(original_vulnerable_code, encoding="utf-8")
 
-    # Rapor kaydet
     report = {
         "scenario": "Self-Healing Multi-Turn Validation",
+        "backend": synthesizer.backend_name,
+        "model_name": synthesizer.model_name,
         "turn_1": {
             "patch": flawed_patch,
             "func_pass": t1_res["func_pass"],
             "sec_pass": t1_res["sec_pass"],
-            "error_observed": "IndexError: tuple index out of range (user[2] email not selected)"
         },
         "turn_2": {
             "feedback_provided": True,
+            "previous_patch_in_history": True,
             "patch": healed_patch,
+            "llm_metrics": gen_res.to_metrics_dict(),
             "func_pass": t2_res["func_pass"],
             "sec_pass": t2_res["sec_pass"],
-            "resolved": t2_res["all_passed"]
-        }
+            "resolved": t2_res["all_passed"],
+        },
     }
-    with open(task_dir / "self_healing_rapor.json", "w", encoding="utf-8") as f:
+    report_path = task_dir / "self_healing_rapor.json"
+    with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
-    print(f"\n[Rapor] Detaylı rapor kaydedildi: {task_dir / 'self_healing_rapor.json'}")
+    print(f"\n[Rapor] Detaylı rapor kaydedildi: {report_path.as_posix()}")
+
 
 if __name__ == "__main__":
     run_self_healing_demonstration()
