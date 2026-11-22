@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_19_weak_md5",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B324",
+      "cwe_id": "CWE-327",
+      "file_path": "pipeline/tasks/task_19_weak_md5/app.py",
+      "line_number": 8,
+      "end_line_number": 8,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "7     payload = f\"{salt}:{token}\".encode(\"utf-8\")\n8     return hashlib.md5(payload).hexdigest()",
+      "message": "Use of weak MD5 hash for security. Consider usedforsecurity=False",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_19_weak_md5/app.py",
+      "test_id": "B324",
+      "cwe": "CWE-327",
+      "issue_text": "Use of weak MD5 hash for security. Consider usedforsecurity=False",
+      "code": "7     payload = f\"{salt}:{token}\".encode(\"utf-8\")\n8     return hashlib.md5(payload).hexdigest()"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 12.356,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_19_weak_md5/app.py::hash_sensitive_token": "import hashlib\n\ndef hash_sensitive_token(token: str, salt: str = \"static_salt\") -> str:\n    payload = f\"{salt}:{token}\".encode(\"utf-8\")\n    return hashlib.sha256(payload).hexdigest()"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_19_weak_md5/app.py": "--- a/pipeline/tasks/task_19_weak_md5/app.py\n+++ b/pipeline/tasks/task_19_weak_md5/app.py\n@@ -5,4 +5,4 @@\n \n def hash_sensitive_token(token: str, salt: str = \"static_salt\") -> str:\n     payload = f\"{salt}:{token}\".encode(\"utf-8\")\n-    return hashlib.md5(payload).hexdigest()\n+    return hashlib.sha256(payload).hexdigest()\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 1.0,
+    "mean_entropy": 0.0
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 6.505,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_19_weak_md5/app.py::hash_sensitive_token",
+          "function_name": "hash_sensitive_token",
+          "file": "pipeline/tasks/task_19_weak_md5/app.py",
+          "patch_code": "import hashlib\n\ndef hash_sensitive_token(token: str, salt: str = \"static_salt\") -> str:\n    payload = f\"{salt}:{token}\".encode(\"utf-8\")\n    return hashlib.sha256(payload).hexdigest()",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.666,
+            "token_count": 53,
+            "confidence_score": 1.0,
+            "entropy": 0.0,
+            "attention_summary": {
+              "focused_token": "encode",
+              "peak_weight": 0.0058,
+              "attention_entropy": 4.3156,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "encode",
+                  "token_index": 226,
+                  "weight": 0.0058
+                },
+                {
+                  "token": "static",
+                  "token_index": 211,
+                  "weight": 0.0055
+                },
+                {
+                  "token": "_token",
+                  "token_index": 193,
+                  "weight": 0.0054
+                },
+                {
+                  "token": "payload",
+                  "token_index": 218,
+                  "weight": 0.0054
+                },
+                {
+                  "token": "def",
+                  "token_index": 198,
+                  "weight": 0.0048
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

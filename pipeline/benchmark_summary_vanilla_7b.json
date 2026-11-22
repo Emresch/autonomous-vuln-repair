@@ -1,0 +1,444 @@
+{
+  "benchmark_mode": "vanilla_zero_shot",
+  "timestamp": "2026-11-22 18:11:03",
+  "backend": "transformers",
+  "model_name": "qwen2.5-coder:7b",
+  "max_turns": 1,
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_tasks": 25,
+  "success_rate": "%44.0",
+  "total_time_seconds": 390.809,
+  "results": [
+    {
+      "id": "TASK-01",
+      "name": "SQLi Auth Lookup",
+      "category": "CAT-1: Injection",
+      "type": "CWE-89 (SQL Injection)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 55.767,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9979,
+        "mean_entropy": 0.0099
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -11,8 +11,8 @@\n             email TEXT\n         )\n     ''')\n-    cursor.execute(\"INSERT OR IGNORE INTO users (username, email) VALUES ('alice', 'alice@example.com')\")\n-    cursor.execute(\"INSERT OR IGNORE INTO users (username, email) VALUES ('bob', 'bob@example.com')\")\n+    cursor.execute(\"INSERT OR IGNORE INTO users (username, email) VALUES (?, ?)\", ('alice', 'alice@example.com'))\n+    cursor.execute(\"INSERT OR IGNORE INTO users (username, email) VALUES (?, ?)\", ('bob', 'bob@example.com'))\n     conn.commit()\n     return conn\n \n@@ -21,12 +21,12 @@\n \n def get_user_by_username(conn, username: str):\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def count_total_users(conn) -> int:\n     cursor = conn.cursor()\n     cursor.execute(\"SELECT COUNT(*) FROM users\")\n     res = cursor.fetchone()\n-    return res[0] if res else 0\n+    return res[0] if res else 0"
+    },
+    {
+      "id": "TASK-02",
+      "name": "SQLi Product Search",
+      "category": "CAT-1: Injection",
+      "type": "CWE-89 (SQL Injection)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 23.254,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9981,
+        "mean_entropy": 0.0099
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -16,6 +16,6 @@\n \n def search_products_by_category(conn: sqlite3.Connection, category: str, max_price: float) -> List[Tuple]:\n     cursor = conn.cursor()\n-    sql = f\"SELECT id, name, price FROM products WHERE category = '{category}' AND price <= {max_price}\"\n-    cursor.execute(sql)\n-    return cursor.fetchall()\n+    sql = \"SELECT id, name, price FROM products WHERE category = ? AND price <= ?\"\n+    cursor.execute(sql, (category, max_price))\n+    return cursor.fetchall()"
+    },
+    {
+      "id": "TASK-03",
+      "name": "Airflow CVE-2022-41131",
+      "category": "CAT-1: Injection",
+      "type": "CWE-78 (OS Command Inj / RCE)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 24.611,
+      "status": "TEST_FAILED",
+      "func_pass": false,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9811,
+        "mean_entropy": 0.0547
+      },
+      "unified_diff": "--- a/hive_hook.py\n+++ b/hive_hook.py\n@@ -8,7 +8,7 @@\n         self.default_schema = default_schema\n \n     def _prepare_cli_cmd(self) -> list:\n-        return [\"echo\", \"EXECUTING_HIVE_QUERY\"]\n+        return [\"hive\", \"-e\"]\n \n     def run_cli(\n         self,\n@@ -29,14 +29,14 @@\n                 f_name = f.name\n \n             hive_cmd = self._prepare_cli_cmd()\n-            hive_cmd.extend([\"-f\", f_name])\n+            hive_cmd.extend([f_name])\n \n-            with open(f_name, \"r\", encoding=\"utf-8\") as rf:\n-                generated_script = rf.read()\n+            result = subprocess.run(hive_cmd, capture_output=True, text=True)\n \n             return {\n-                \"status\": \"SUCCESS\",\n+                \"status\": \"SUCCESS\" if result.returncode == 0 else \"FAILURE\",\n                 \"schema_used\": schema,\n-                \"generated_script\": generated_script,\n+                \"output\": result.stdout,\n+                \"error\": result.stderr,\n                 \"cmd\": \" \".join(hive_cmd)\n             }\n"
+    },
+    {
+      "id": "TASK-04",
+      "name": "Subprocess Shell Cmd Inj",
+      "category": "CAT-1: Injection",
+      "type": "CWE-78 (OS Command Injection)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 9.178,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9786,
+        "mean_entropy": 0.0595
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -6,9 +6,9 @@\n     return label.strip().upper()\n \n def run_echo_diagnostic(token: str) -> Dict[str, str]:\n-    cmd = f'\"{sys.executable}\" -c \"print(\\'DIAG_OK:\\' + \\'{token}\\')\"'\n-    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)\n+    cmd = [sys.executable, '-c', f\"print('DIAG_OK:' + '{token}')\"]\n+    proc = subprocess.run(cmd, capture_output=True, text=True)\n     return {\n         \"returncode\": str(proc.returncode),\n         \"output\": proc.stdout.strip(),\n-    }\n+    }"
+    },
+    {
+      "id": "TASK-05",
+      "name": "LDAP Filter Injection",
+      "category": "CAT-1: Injection",
+      "type": "CWE-90 (LDAP Injection)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 13.928,
+      "status": "TEST_FAILED",
+      "func_pass": false,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9779,
+        "mean_entropy": 0.0806
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -11,6 +11,6 @@\n \n def build_and_lookup_ldap_user(username: str) -> Optional[Dict[str, str]]:\n     ldap_filter = f\"(&(objectClass=user)(uid={username}))\"\n-    if \"*)\" in ldap_filter or \"|(uid=\" in ldap_filter:\n-        return MOCK_DIRECTORY[\"(&(objectClass=user)(uid=admin))\"]\n-    return MOCK_DIRECTORY.get(ldap_filter)\n+    if re.search(r\"[)*|]\", ldap_filter):\n+        return None\n+    return MOCK_DIRECTORY.get(ldap_filter)"
+    },
+    {
+      "id": "TASK-06",
+      "name": "Starlette CVE-2023-29159",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 15.915,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9909,
+        "mean_entropy": 0.033
+      },
+      "unified_diff": "--- a/staticfiles.py\n+++ b/staticfiles.py\n@@ -17,7 +17,6 @@\n                 full_path = os.path.abspath(joined_path)\n             else:\n                 full_path = os.path.realpath(joined_path)\n-            directory = os.path.realpath(directory)\n             if os.path.commonprefix([full_path, directory]) != directory:\n                 continue\n             try:\n"
+    },
+    {
+      "id": "TASK-07",
+      "name": "Startswith Sibling Traversal",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 12.687,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9784,
+        "mean_entropy": 0.0685
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -11,5 +11,8 @@\n         raise PermissionError(\"Path outside tenant root\")\n     if not os.path.isfile(candidate):\n         return None\n+    allowed_extension = get_allowed_extension()\n+    if not candidate.endswith(allowed_extension):\n+        raise ValueError(\"Invalid file extension\")\n     with open(candidate, \"r\", encoding=\"utf-8\") as f:\n-        return f.read()\n+        return f.read()"
+    },
+    {
+      "id": "TASK-08",
+      "name": "os.path.join Absolute Path",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 9.615,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9913,
+        "mean_entropy": 0.0288
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -8,5 +8,8 @@\n     target = os.path.join(logs_dir, log_name)\n     if not os.path.exists(target):\n         return None\n-    with open(target, \"r\", encoding=\"utf-8\") as f:\n-        return f.read()\n+    try:\n+        with open(target, \"r\", encoding=\"utf-8\") as f:\n+            return f.read()\n+    except IOError:\n+        return None"
+    },
+    {
+      "id": "TASK-09",
+      "name": "Tarfile ZipSlip Extraction",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Archive ZipSlip)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 11.066,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9777,
+        "mean_entropy": 0.0626
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -6,7 +6,9 @@\n     return name.endswith(\".tar\") or name.endswith(\".tar.gz\")\n \n def extract_backup_archive(tar_path: str, dest_dir: str) -> List[str]:\n+    if not is_tar_filename(os.path.basename(tar_path)):\n+        raise ValueError(\"Invalid file format\")\n     os.makedirs(dest_dir, exist_ok=True)\n     with tarfile.open(tar_path, \"r\") as archive:\n         archive.extractall(path=dest_dir)\n-        return [m.name for m in archive.getmembers()]\n+        return [m.name for m in archive.getmembers()]"
+    },
+    {
+      "id": "TASK-10",
+      "name": "Insecure Tempfile mktemp",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-377 (Insecure Temp File)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 9.66,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9856,
+        "mean_entropy": 0.0466
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -5,7 +5,7 @@\n     return title.strip().title()\n \n def write_temporary_report(content: str) -> str:\n-    tmp_path = tempfile.mktemp(prefix=\"avr_report_\", suffix=\".txt\")\n+    tmp_path = tempfile.mkstemp(prefix=\"avr_report_\", suffix=\".txt\")[1]\n     with open(tmp_path, \"w\", encoding=\"utf-8\") as f:\n         f.write(content)\n-    return tmp_path\n+    return tmp_path"
+    },
+    {
+      "id": "TASK-11",
+      "name": "Code Injection via eval()",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-95 (Eval Code Injection)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 9.211,
+      "status": "TEST_FAILED",
+      "func_pass": false,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9721,
+        "mean_entropy": 0.0631
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -1,11 +1,16 @@\n-import ast\n+import json\n from typing import Any, Dict\n \n def is_dict_config(obj: Any) -> bool:\n     return isinstance(obj, dict)\n \n def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n-    parsed = eval(payload_str)\n+    try:\n+        parsed = json.loads(payload_str)\n+    except json.JSONDecodeError:\n+        raise ValueError(\"Invalid JSON payload\")\n+    \n     if not isinstance(parsed, dict):\n         raise ValueError(\"Payload must evaluate to a dictionary\")\n-    return parsed\n+    \n+    return parsed"
+    },
+    {
+      "id": "TASK-12",
+      "name": "Insecure YAML Load",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-502 (Insecure YAML Load)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 7.395,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.992,
+        "mean_entropy": 0.0233
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -5,7 +5,7 @@\n     return \"v1.0\"\n \n def load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n-    data = yaml.load(yaml_text, Loader=yaml.Loader)\n+    data = yaml.safe_load(yaml_text)\n     if not isinstance(data, dict):\n         raise ValueError(\"Configuration root must be a mapping\")\n-    return data\n+    return data"
+    },
+    {
+      "id": "TASK-13",
+      "name": "Insecure Pickle Deserialization",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-502 (Pickle Deserialization)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 11.032,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9798,
+        "mean_entropy": 0.063
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -1,6 +1,5 @@\n import base64\n import json\n-import pickle\n from typing import Any, Dict\n \n def encode_json_session(session_data: Dict[str, Any]) -> str:\n@@ -8,8 +7,8 @@\n     return base64.b64encode(raw).decode(\"ascii\")\n \n def decode_user_session_token(token_b64: str) -> Dict[str, Any]:\n-    raw_bytes = base64.b64decode(token_b64.encode(\"ascii\"))\n+    raw_bytes = base64.b64decode(token_b64)\n     try:\n         return json.loads(raw_bytes.decode(\"utf-8\"))\n-    except Exception:\n-        return pickle.loads(raw_bytes)\n+    except json.JSONDecodeError:\n+        return {}"
+    },
+    {
+      "id": "TASK-14",
+      "name": "Unsafe XML Entity Parsing",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-611 (XML Entity / XXE)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 9.284,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.973,
+        "mean_entropy": 0.0848
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -6,6 +6,6 @@\n \n def parse_invoice_xml(xml_string: str) -> Dict[str, str]:\n     root = ET.fromstring(xml_string)\n-    customer = root.findtext(\"customer\", default=\"\")\n-    amount = root.findtext(\"amount\", default=\"0\")\n-    return {\"customer\": customer, \"amount\": amount}\n+    customer = root.findtext(\"customer\", default=\"Unknown Customer\")\n+    amount = root.findtext(\"amount\", default=\"0.00\")\n+    return {\"customer\": customer, \"amount\": amount}"
+    },
+    {
+      "id": "TASK-15",
+      "name": "Reflected HTML Profile XSS",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-79 (Cross-Site Scripting)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 6.931,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9884,
+        "mean_entropy": 0.0393
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -1,7 +1,7 @@\n import html\n \n def format_badge_label(role: str) -> str:\n-    return role.strip().upper()\n+    return html.escape(role).strip().upper()\n \n def render_user_profile_card(display_name: str, bio: str) -> str:\n-    return f\"<div class='profile'><h2>{display_name}</h2><p>{bio}</p></div>\"\n+    return f\"<div class='profile'><h2>{html.escape(display_name)}</h2><p>{html.escape(bio)}</p></div>\""
+    },
+    {
+      "id": "TASK-16",
+      "name": "Unvalidated Open Redirect",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-601 (Open Redirect)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 7.746,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9799,
+        "mean_entropy": 0.0677
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -8,4 +8,4 @@\n \n def build_post_login_redirect(next_url: str) -> Dict[str, Any]:\n     target = next_url if next_url else DEFAULT_DASHBOARD\n-    return {\"status\": 302, \"Location\": target}\n+    return {\"status\": 302, \"Location\": target}"
+    },
+    {
+      "id": "TASK-17",
+      "name": "Webhook URL Fetch SSRF",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-918 (SSRF)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 9.151,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.974,
+        "mean_entropy": 0.0846
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -6,5 +6,8 @@\n     return \"AVR-Webhook-Validator/1.0\"\n \n def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n-    with opener(url, timeout=3) as resp:\n-        return resp.read().decode(\"utf-8\")\n+    try:\n+        with opener(url, timeout=3) as resp:\n+            return resp.read().decode(\"utf-8\")\n+    except Exception as e:\n+        return f\"Error: {e}\""
+    },
+    {
+      "id": "TASK-18",
+      "name": "HTTP Header CRLF Injection",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-113 (CRLF Header Injection)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 6.625,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9646,
+        "mean_entropy": 0.1099
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -4,4 +4,5 @@\n     return \"/\"\n \n def build_download_disposition_header(filename: str) -> str:\n-    return f\"Content-Disposition: attachment; filename={filename}\"\n+    sanitized_filename = re.sub(r'[\\\\/*?:\"<>|]', '', filename)\n+    return f\"Content-Disposition: attachment; filename={sanitized_filename}\""
+    },
+    {
+      "id": "TASK-19",
+      "name": "Weak MD5 Password Hash",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-327 (Broken Crypto Hash)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 7.241,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9919,
+        "mean_entropy": 0.04
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -5,4 +5,4 @@\n \n def hash_sensitive_token(token: str, salt: str = \"static_salt\") -> str:\n     payload = f\"{salt}:{token}\".encode(\"utf-8\")\n-    return hashlib.md5(payload).hexdigest()\n+    return hashlib.sha256(payload).hexdigest()"
+    },
+    {
+      "id": "TASK-20",
+      "name": "Weak PRNG Reset Token",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-330 (Insufficient Randomness)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 7.478,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9819,
+        "mean_entropy": 0.0546
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -8,4 +8,4 @@\n     return 16\n \n def generate_password_reset_code(length: int = 24) -> str:\n-    return \"\".join(random.choice(ALPHABET) for _ in range(length))\n+    return \"\".join(secrets.choice(ALPHABET) for _ in range(length))"
+    },
+    {
+      "id": "TASK-21",
+      "name": "HMAC Timing Attack Check",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-208 (Timing Discrepancy)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 8.68,
+      "status": "TEST_FAILED",
+      "func_pass": false,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9866,
+        "mean_entropy": 0.0422
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -1,9 +1,9 @@\n import hashlib\n import hmac\n \n-def compute_webhook_signature(secret_key: str, body: str) -> str:\n-    return hmac.new(secret_key.encode(\"utf-8\"), body.encode(\"utf-8\"), hashlib.sha256).hexdigest()\n+def compute_webhook_signature(secret_key: bytes, body: bytes) -> bytes:\n+    return hmac.new(secret_key, body, hashlib.sha256).digest()\n \n-def verify_webhook_signature(secret_key: str, body: str, provided_token: str) -> bool:\n+def verify_webhook_signature(secret_key: bytes, body: bytes, provided_token: bytes) -> bool:\n     expected_secret = compute_webhook_signature(secret_key, body)\n-    return provided_token == expected_secret\n+    return hmac.compare_digest(provided_token, expected_secret)"
+    },
+    {
+      "id": "TASK-22",
+      "name": "Hardcoded Fallback API Key",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-798 (Hardcoded Credentials)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 7.701,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9617,
+        "mean_entropy": 0.1145
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -6,5 +6,5 @@\n def get_signing_password(env_var: str = \"AVR_SIGNING_SECRET\") -> str:\n     password = os.environ.get(env_var)\n     if not password:\n-        password = \"super_secret_hardcoded_master_key_123\"\n-    return password\n+        raise ValueError(\"Signing secret is not set in environment variables.\")\n+    return password"
+    },
+    {
+      "id": "TASK-23",
+      "name": "Catastrophic ReDoS Regex",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-1333 (ReDoS Complexity)",
+      "repaired": true,
+      "turns": 1,
+      "duration": 5.317,
+      "status": "REPAIRED",
+      "func_pass": true,
+      "sec_pass": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9884,
+        "mean_entropy": 0.0476
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -4,4 +4,4 @@\n     return text.strip().lower()\n \n def is_valid_alphanumeric_slug(slug: str) -> bool:\n-    return bool(re.match(r\"^([a-zA-Z0-9]+)+$\", slug))\n+    return bool(re.match(r\"^[a-zA-Z0-9]+$\", slug))"
+    },
+    {
+      "id": "TASK-24",
+      "name": "Unbounded Allocation DoS",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-770 (Resource Exhaustion)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 7.168,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9785,
+        "mean_entropy": 0.0685
+      },
+      "unified_diff": "--- a/app.py\n+++ b/app.py\n@@ -6,4 +6,6 @@\n     return 0\n \n def allocate_worker_slots(count: int) -> List[int]:\n-    return [0] * count\n+    if count > MAX_SAFE_SLOTS:\n+        raise ValueError(\"Count exceeds maximum safe slots\")\n+    return [get_default_slot_value()] * count"
+    },
+    {
+      "id": "TASK-25",
+      "name": "Multi-Vuln Microservice",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-89 + CWE-22 (Çoklu Açık)",
+      "repaired": false,
+      "turns": 1,
+      "duration": 32.109,
+      "status": "TEST_FAILED",
+      "func_pass": true,
+      "sec_pass": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9969,
+        "mean_entropy": 0.0116
+      },
+      "unified_diff": "--- a/service.py\n+++ b/service.py\n@@ -9,8 +9,8 @@\n \n def get_user_account(conn: sqlite3.Connection, username: str) -> Optional[Tuple]:\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def calculate_user_storage_quota(account_type: str) -> int:\n@@ -31,4 +31,4 @@\n         return None\n \n def format_security_audit_log(user_id: int, action: str, ip_address: str) -> Dict[str, Any]:\n-    return {\"user_id\": user_id, \"action\": action, \"ip\": ip_address, \"status\": \"LOGGED\"}\n+    return {\"user_id\": user_id, \"action\": action, \"ip\": ip_address, \"status\": \"LOGGED\"}"
+    }
+  ]
+}

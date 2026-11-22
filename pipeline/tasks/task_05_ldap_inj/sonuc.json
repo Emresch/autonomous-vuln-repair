@@ -1,0 +1,179 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_05_ldap_inj",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.ldap-or-query-filter-injection",
+      "cwe_id": "CWE-90",
+      "file_path": "pipeline/tasks/task_05_ldap_inj/app.py",
+      "line_number": 13,
+      "end_line_number": 13,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "13     ldap_filter = f\"(&(objectClass=user)(uid={username}))\"",
+      "message": "LDAP Filter Injection risk (CWE-90): User-supplied input is interpolated directly into an LDAP search filter string without escaping LDAP metacharacters ('*', '(', ')', '\\\\', NUL), allowing attackers to bypass authentication or enumerate records (e.g. 'admin)(|(uid=*'). Reject or escape special LDAP filter characters in user input.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_05_ldap_inj/app.py",
+      "test_id": "pipeline.sast.ldap-or-query-filter-injection",
+      "cwe": "CWE-90",
+      "issue_text": "LDAP Filter Injection risk (CWE-90): User-supplied input is interpolated directly into an LDAP search filter string without escaping LDAP metacharacters ('*', '(', ')', '\\\\', NUL), allowing attackers to bypass authentication or enumerate records (e.g. 'admin)(|(uid=*'). Reject or escape special LDAP filter characters in user input.",
+      "code": "13     ldap_filter = f\"(&(objectClass=user)(uid={username}))\""
+    }
+  ],
+  "repaired": true,
+  "turns_used": 2,
+  "total_duration_seconds": 27.569,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_05_ldap_inj/app.py::build_and_lookup_ldap_user": "import re\nfrom typing import Dict, Optional\n\ndef build_and_lookup_ldap_user(username: str) -> Optional[Dict[str, str]]:\n    # Escape special LDAP filter characters\n    escaped_username = re.escape(username)\n    ldap_filter = f\"(&(objectClass=user)(uid={escaped_username}))\"\n    \n    # Check for potentially dangerous patterns\n    if \"*)\" in ldap_filter or \"|(uid=\" in ldap_filter:\n        return None\n    \n    return MOCK_DIRECTORY.get(ldap_filter)"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_05_ldap_inj/app.py": "--- a/pipeline/tasks/task_05_ldap_inj/app.py\n+++ b/pipeline/tasks/task_05_ldap_inj/app.py\n@@ -10,7 +10,12 @@\n     return \"corp.example.com\"\n \n def build_and_lookup_ldap_user(username: str) -> Optional[Dict[str, str]]:\n-    ldap_filter = f\"(&(objectClass=user)(uid={username}))\"\n+    # Escape special LDAP filter characters\n+    escaped_username = re.escape(username)\n+    ldap_filter = f\"(&(objectClass=user)(uid={escaped_username}))\"\n+\n+    # Check for potentially dangerous patterns\n     if \"*)\" in ldap_filter or \"|(uid=\" in ldap_filter:\n-        return MOCK_DIRECTORY[\"(&(objectClass=user)(uid=admin))\"]\n+        return None\n+\n     return MOCK_DIRECTORY.get(ldap_filter)\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9925,
+    "mean_entropy": 0.0049
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 10.456,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_05_ldap_inj/app.py::build_and_lookup_ldap_user",
+          "function_name": "build_and_lookup_ldap_user",
+          "file": "pipeline/tasks/task_05_ldap_inj/app.py",
+          "patch_code": "import re\nfrom typing import Dict, Optional\n\ndef build_and_lookup_ldap_user(username: str) -> Optional[Dict[str, str]]:\n    # Escape special LDAP filter characters\n    escaped_username = re.escape(username)\n    ldap_filter = f\"(&(objectClass=user)(uid={escaped_username}))\"\n    \n    # Check for potentially dangerous patterns\n    if \"*)\" in ldap_filter or \"|(uid=\" in ldap_filter:\n        return MOCK_DIRECTORY[\"(&(objectClass=user)(uid=admin))\"]\n    \n    return MOCK_DIRECTORY.get(ldap_filter)",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 9.537,
+            "token_count": 116,
+            "confidence_score": 0.9883,
+            "entropy": 0.024,
+            "attention_summary": {
+              "focused_token": "MOCK",
+              "peak_weight": 0.0081,
+              "attention_entropy": 4.595,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "MOCK",
+                  "token_index": 325,
+                  "weight": 0.0081
+                },
+                {
+                  "token": "Dict",
+                  "token_index": 244,
+                  "weight": 0.0044
+                },
+                {
+                  "token": "if",
+                  "token_index": 308,
+                  "weight": 0.0044
+                },
+                {
+                  "token": "username",
+                  "token_index": 304,
+                  "weight": 0.0043
+                },
+                {
+                  "token": "_DIRECTORY",
+                  "token_index": 326,
+                  "weight": 0.0043
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": false,
+      "func_output": "..                                                                       [100%]\n2 passed in 0.04s",
+      "sec_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n_______________ test_ldap_wildcard_and_filter_injection_blocked _______________\n\n    def test_ldap_wildcard_and_filter_injection_blocked():\n        for payload in [\"*)(|(uid=*\", \"admin)(|(uid=*\", \"alice*\"]:\n            try:\n                res = build_and_lookup_ldap_user(payload)\n>               assert res is None, f\"LDAP injection succeeded with payload {payload}: {res}\"\nE               AssertionError: LDAP injection succeeded with payload *)(|(uid=*: {'uid': 'admin', 'role': 'superuser'}\nE               assert {'uid': 'admin', 'role': 'superuser'} is None\n\nsec_test.py:7: AssertionError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ldap_wildcard_and_filter_injection_blocked - Asserti...\n1 failed in 0.13s",
+      "error_feedback": "Security Exploit Not Blocked (sec_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n_______________ test_ldap_wildcard_and_filter_injection_blocked _______________\n\n    def test_ldap_wildcard_and_filter_injection_blocked():\n        for payload in [\"*)(|(uid=*\", \"admin)(|(uid=*\", \"alice*\"]:\n            try:\n                res = build_and_lookup_ldap_user(payload)\n>               assert res is None, f\"LDAP injection succeeded with payload {payload}: {res}\"\nE               AssertionError: LDAP injection succeeded with payload *)(|(uid=*: {'uid': 'admin', 'role': 'superuser'}\nE               assert {'uid': 'admin', 'role': 'superuser'} is None\n\nsec_test.py:7: AssertionError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ldap_wildcard_and_filter_injection_blocked - Asserti...\n1 failed in 0.13s"
+    },
+    {
+      "turn": 2,
+      "duration_seconds": 11.508,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_05_ldap_inj/app.py::build_and_lookup_ldap_user",
+          "function_name": "build_and_lookup_ldap_user",
+          "file": "pipeline/tasks/task_05_ldap_inj/app.py",
+          "patch_code": "import re\nfrom typing import Dict, Optional\n\ndef build_and_lookup_ldap_user(username: str) -> Optional[Dict[str, str]]:\n    # Escape special LDAP filter characters\n    escaped_username = re.escape(username)\n    ldap_filter = f\"(&(objectClass=user)(uid={escaped_username}))\"\n    \n    # Check for potentially dangerous patterns\n    if \"*)\" in ldap_filter or \"|(uid=\" in ldap_filter:\n        return None\n    \n    return MOCK_DIRECTORY.get(ldap_filter)",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 10.639,
+            "token_count": 105,
+            "confidence_score": 0.9925,
+            "entropy": 0.0049,
+            "attention_summary": {
+              "focused_token": "def",
+              "peak_weight": 0.0041,
+              "attention_entropy": 5.2987,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "def",
+                  "token_index": 461,
+                  "weight": 0.0041
+                },
+                {
+                  "token": "MOCK",
+                  "token_index": 325,
+                  "weight": 0.0037
+                },
+                {
+                  "token": "escaped",
+                  "token_index": 489,
+                  "weight": 0.0034
+                },
+                {
+                  "token": "if",
+                  "token_index": 523,
+                  "weight": 0.0034
+                },
+                {
+                  "token": "str",
+                  "token_index": 289,
+                  "weight": 0.003
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": "..                                                                       [100%]\n2 passed in 0.05s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

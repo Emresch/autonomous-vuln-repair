@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_15_html_xss",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.raw-html-template-xss",
+      "cwe_id": "CWE-79",
+      "file_path": "pipeline/tasks/task_15_html_xss/app.py",
+      "line_number": 7,
+      "end_line_number": 7,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "7     return f\"<div class='profile'><h2>{display_name}</h2><p>{bio}</p></div>\"",
+      "message": "Cross-Site Scripting (XSS) risk (CWE-79): Unescaped user input is interpolated directly into an HTML response string, allowing attackers to inject executable '<script>' or event-handler payloads. Sanitize/escape all dynamic HTML text and attribute values before rendering.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_15_html_xss/app.py",
+      "test_id": "pipeline.sast.raw-html-template-xss",
+      "cwe": "CWE-79",
+      "issue_text": "Cross-Site Scripting (XSS) risk (CWE-79): Unescaped user input is interpolated directly into an HTML response string, allowing attackers to inject executable '<script>' or event-handler payloads. Sanitize/escape all dynamic HTML text and attribute values before rendering.",
+      "code": "7     return f\"<div class='profile'><h2>{display_name}</h2><p>{bio}</p></div>\""
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 13.409,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_15_html_xss/app.py::render_user_profile_card": "def render_user_profile_card(display_name: str, bio: str) -> str:\n    sanitized_display_name = html.escape(display_name)\n    sanitized_bio = html.escape(bio)\n    return f\"<div class='profile'><h2>{sanitized_display_name}</h2><p>{sanitized_bio}</p></div>\""
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_15_html_xss/app.py": "--- a/pipeline/tasks/task_15_html_xss/app.py\n+++ b/pipeline/tasks/task_15_html_xss/app.py\n@@ -4,4 +4,6 @@\n     return role.strip().upper()\n \n def render_user_profile_card(display_name: str, bio: str) -> str:\n-    return f\"<div class='profile'><h2>{display_name}</h2><p>{bio}</p></div>\"\n+    sanitized_display_name = html.escape(display_name)\n+    sanitized_bio = html.escape(bio)\n+    return f\"<div class='profile'><h2>{sanitized_display_name}</h2><p>{sanitized_bio}</p></div>\"\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9953,
+    "mean_entropy": 0.0122
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 7.74,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_15_html_xss/app.py::render_user_profile_card",
+          "function_name": "render_user_profile_card",
+          "file": "pipeline/tasks/task_15_html_xss/app.py",
+          "patch_code": "def render_user_profile_card(display_name: str, bio: str) -> str:\n    sanitized_display_name = html.escape(display_name)\n    sanitized_bio = html.escape(bio)\n    return f\"<div class='profile'><h2>{sanitized_display_name}</h2><p>{sanitized_bio}</p></div>\"",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 6.899,
+            "token_count": 71,
+            "confidence_score": 0.9953,
+            "entropy": 0.0122,
+            "attention_summary": {
+              "focused_token": "(display",
+              "peak_weight": 0.0061,
+              "attention_entropy": 4.2714,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "(display",
+                  "token_index": 249,
+                  "weight": 0.0061
+                },
+                {
+                  "token": "_name",
+                  "token_index": 250,
+                  "weight": 0.006
+                },
+                {
+                  "token": "bio",
+                  "token_index": 254,
+                  "weight": 0.0044
+                },
+                {
+                  "token": "f",
+                  "token_index": 263,
+                  "weight": 0.0044
+                },
+                {
+                  "token": "def",
+                  "token_index": 244,
+                  "weight": 0.0039
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

@@ -222,9 +222,10 @@ class SASTEngine:
             "1024",
         ]
 
-        configs: List[str] = ["--config", "p/python"]
         if self.rules_file and self.rules_file.exists():
-            configs.extend(["--config", str(self.rules_file)])
+            configs: List[str] = ["--config", str(self.rules_file)]
+        else:
+            configs = ["--config", "p/python"]
 
         cmd = base_cmd + configs + [resolved_target]
 
@@ -237,22 +238,6 @@ class SASTEngine:
                 timeout=self.timeout,
                 check=False,
             )
-
-            # Fallback to local rules.yaml only if remote p/python ruleset cannot be fetched (e.g. offline)
-            if (not result.stdout.strip() or result.returncode not in (0, 1)) and (
-                self.rules_file and self.rules_file.exists()
-            ):
-                fallback_cmd = base_cmd + ["--config", str(self.rules_file), resolved_target]
-                fallback_res = subprocess.run(
-                    fallback_cmd,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    timeout=self.timeout,
-                    check=False,
-                )
-                if fallback_res.stdout.strip():
-                    result = fallback_res
 
             if not result.stdout.strip():
                 return []

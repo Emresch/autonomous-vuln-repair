@@ -188,6 +188,9 @@ class SelfHealingController:
         # -------------------------------------------------------------
         # 1. FAZ: BAŞLANGIÇ DURUM TEYİDİ (BASELINE SANITY CHECK)
         # -------------------------------------------------------------
+        if isinstance(self.sandbox, DockerSandbox):
+            self.sandbox.verify_docker_ready(auto_build=True)
+
         print("\n[FAZ 1] Başlangıç Durum Doğrulaması (Baseline Check)...")
         baseline_res = self.sandbox.run_dual_verification(str(self.task_dir))
 
@@ -313,6 +316,7 @@ class SelfHealingController:
             turn_patches: List[Dict[str, Any]] = []
             turn_syntax_errors: List[str] = []
             turn_llm_errors: List[str] = []
+            target_specific_errors: Dict[str, str] = {}
 
             for idx, target in enumerate(repair_targets, 1):
                 file_path: Path = target["file_path"]
@@ -337,6 +341,7 @@ class SelfHealingController:
                     )
                     print(f"      [!] {err}")
                     turn_syntax_errors.append(err)
+                    target_specific_errors[target_key] = err
                     continue
 
                 print(
@@ -358,6 +363,7 @@ class SelfHealingController:
                     err = f"LLM üretim hatası ({target['qualified_name']}): {exc}"
                     print(f"      [!] {err}")
                     turn_llm_errors.append(err)
+                    target_specific_errors[target_key] = err
                     turn_patches.append({
                         "target": target_key,
                         "function_name": target["qualified_name"],
@@ -373,6 +379,16 @@ class SelfHealingController:
                     f"      Yama üretildi ({gen_result.duration_seconds:.2f} sn). "
                     "AST sözdizimi doğrulanıyor..."
                 )
+                if gen_result.confidence_score is not None or gen_result.entropy is not None:
+                    attn_info = ""
+                    if gen_result.attention_summary:
+                        focused = gen_result.attention_summary.get("focused_token")
+                        risk = gen_result.attention_summary.get("hallucination_risk", "LOW")
+                        attn_info = f" | Odak Token: '{focused}' | Halüsinasyon Riski: {risk}"
+                    print(
+                        f"      [Telemetri] Confidence: {gen_result.confidence_score} | "
+                        f"Entropy: {gen_result.entropy}{attn_info}"
+                    )
 
                 # Önceki turdaki model yanıtını konuşma geçmişine (assistant rolüyle) ekle
                 conversations[target_key].append({
@@ -405,9 +421,11 @@ class SelfHealingController:
 
                 if not syntax_ok:
                     print(f"      [!] SÖZDİZİMİ HATASI (diske yazılmadı): {syntax_err}")
-                    turn_syntax_errors.append(
+                    formatted_syntax_err = (
                         f"Syntax/Indentation Error in `{target['qualified_name']}`:\n{syntax_err}"
                     )
+                    turn_syntax_errors.append(formatted_syntax_err)
+                    target_specific_errors[target_key] = formatted_syntax_err
                     continue
 
                 # Sözdizimi geçerli -> diske uygula
@@ -430,9 +448,19 @@ class SelfHealingController:
                     "error_feedback": combined_errors,
                 })
                 for target in repair_targets:
-                    conversations[target["key"]].append(
-                        self.synthesizer.build_feedback_message(combined_errors, turn)
-                    )
+                    t_key = target["key"]
+                    if t_key in target_specific_errors:
+                        conversations[t_key].append(
+                            self.synthesizer.build_feedback_message(
+                                target_specific_errors[t_key], turn
+                            )
+                        )
+                    else:
+                        conversations[t_key].append(
+                            self.synthesizer.build_sibling_syntax_abort_message(
+                                turn, target["qualified_name"]
+                            )
+                        )
                 print(
                     f"  [!] Tur {turn} sözdizimi/üretim hatası nedeniyle durduruldu. "
                     "Dosyalar bir sonraki turda temiz orijinal haline sıfırlanacak."
@@ -489,10 +517,16 @@ class SelfHealingController:
                 unified_diffs = self._compute_unified_diffs(original_files)
                 break
 
-            # Başarısız tur: konuşma geçmişine hata geri bildirimini ekle
+            # Başarısız tur: konuşma geçmişine hedefe duyarlı hata geri bildirimini ekle
+            is_multi_target = len(repair_targets) > 1
             for target in repair_targets:
                 conversations[target["key"]].append(
-                    self.synthesizer.build_feedback_message(error_feedback or "", turn)
+                    self.synthesizer.build_feedback_message(
+                        error_feedback or "",
+                        turn,
+                        target_function=target["qualified_name"],
+                        is_multi_target=is_multi_target,
+                    )
                 )
             print(
                 f"  [!] Tur {turn} tamamlanamadı. Önceki yama ve hata çıktısı sonraki tura aktarılacak."

@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_22_hardcoded_secret",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B105",
+      "cwe_id": "CWE-259",
+      "file_path": "pipeline/tasks/task_22_hardcoded_secret/app.py",
+      "line_number": 9,
+      "end_line_number": 9,
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "code_snippet": "8     if not password:\n9         password = \"super_secret_hardcoded_master_key_123\"\n10     return password",
+      "message": "Possible hardcoded password: 'super_secret_hardcoded_master_key_123'",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_22_hardcoded_secret/app.py",
+      "test_id": "B105",
+      "cwe": "CWE-259",
+      "issue_text": "Possible hardcoded password: 'super_secret_hardcoded_master_key_123'",
+      "code": "8     if not password:\n9         password = \"super_secret_hardcoded_master_key_123\"\n10     return password"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 12.301,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_22_hardcoded_secret/app.py::get_signing_password": "import os\n\ndef get_signing_password(env_var: str = \"AVR_SIGNING_SECRET\") -> str:\n    password = os.environ.get(env_var)\n    if not password:\n        raise ValueError(\"Signing password not provided and environment variable not set.\")\n    return password"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_22_hardcoded_secret/app.py": "--- a/pipeline/tasks/task_22_hardcoded_secret/app.py\n+++ b/pipeline/tasks/task_22_hardcoded_secret/app.py\n@@ -6,5 +6,5 @@\n def get_signing_password(env_var: str = \"AVR_SIGNING_SECRET\") -> str:\n     password = os.environ.get(env_var)\n     if not password:\n-        password = \"super_secret_hardcoded_master_key_123\"\n+        raise ValueError(\"Signing password not provided and environment variable not set.\")\n     return password\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9654,
+    "mean_entropy": 0.0416
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 6.634,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_22_hardcoded_secret/app.py::get_signing_password",
+          "function_name": "get_signing_password",
+          "file": "pipeline/tasks/task_22_hardcoded_secret/app.py",
+          "patch_code": "import os\n\ndef get_signing_password(env_var: str = \"AVR_SIGNING_SECRET\") -> str:\n    password = os.environ.get(env_var)\n    if not password:\n        raise ValueError(\"Signing password not provided and environment variable not set.\")\n    return password",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.809,
+            "token_count": 60,
+            "confidence_score": 0.9654,
+            "entropy": 0.0416,
+            "attention_summary": {
+              "focused_token": ".environ",
+              "peak_weight": 0.0072,
+              "attention_entropy": 4.3166,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": ".environ",
+                  "token_index": 224,
+                  "weight": 0.0072
+                },
+                {
+                  "token": "AV",
+                  "token_index": 211,
+                  "weight": 0.0069
+                },
+                {
+                  "token": "if",
+                  "token_index": 230,
+                  "weight": 0.0049
+                },
+                {
+                  "token": "R",
+                  "token_index": 212,
+                  "weight": 0.0049
+                },
+                {
+                  "token": "(env",
+                  "token_index": 205,
+                  "weight": 0.0046
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

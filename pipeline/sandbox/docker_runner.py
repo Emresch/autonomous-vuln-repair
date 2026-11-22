@@ -76,6 +76,39 @@ class DockerSandbox:
 
         return "docker"
 
+    def is_daemon_running(self) -> bool:
+        """Docker Engine (Docker Desktop) servisinin çalışır durumda olup olmadığını kontrol eder."""
+        try:
+            res = subprocess.run(
+                [self.docker_bin, "info"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                check=False,
+            )
+            return res.returncode == 0
+        except Exception:
+            return False
+
+    def verify_docker_ready(self, auto_build: bool = True) -> None:
+        """
+        Docker Engine'in açık olduğunu ve sandbox imajının hazır olduğunu doğrular.
+        Docker kapalıysa sessizce yerel ortama düşmek yerine açık RuntimeError fırlatır!
+        """
+        if not self.is_daemon_running():
+            raise RuntimeError(
+                "\n" + "!" * 76 + "\n"
+                "🚨 [KRİTİK HATA] DOCKER ENGINE (DOCKER DESKTOP) ÇALIŞMIYOR!\n"
+                "Sealed Sandbox (--network none, --read-only) doğrulaması Docker olmadan yapılamaz.\n"
+                "Lütfen Docker Desktop uygulamasını başlatın ve Engine hazır olduğunda tekrar deneyin.\n"
+                + "!" * 76
+            )
+        if not self.ensure_image(auto_build=auto_build):
+            raise RuntimeError(
+                f"Docker imajı '{self.image_name}' bulunamadı ve otomatik oluşturulamadı. "
+                f"Lütfen 'docker build -t {self.image_name} pipeline/sandbox' komutunu çalıştırın."
+            )
+
     def ensure_image(self, auto_build: bool = False) -> bool:
         """Sandbox Docker imajının yerel olarak mevcut olup olmadığını kontrol eder."""
         inspect = subprocess.run(
@@ -162,6 +195,27 @@ class DockerSandbox:
             )
             passed = result.returncode == 0
             output = (result.stdout + "\n" + result.stderr).strip()
+
+            lower_out = output.lower()
+            daemon_unavailable = any(
+                marker in lower_out
+                for marker in (
+                    "failed to connect to the docker api",
+                    "dockerdesktoplinuxengine",
+                    "cannot connect to the docker daemon",
+                    "error during connect",
+                    "is the docker daemon running",
+                )
+            )
+            if not passed and daemon_unavailable:
+                err_msg = (
+                    "🚨 [KRİTİK HATA] DOCKER ENGINE KAPALI! "
+                    "Testler yerel ortamda ÇALIŞTIRILMADI (Sessiz fallback devre dışı). "
+                    "Lütfen Docker Desktop'ı başlatın!\n" + output
+                )
+                print(f"\n  [!] {err_msg}")
+                return False, err_msg
+
             return passed, output
 
         except subprocess.TimeoutExpired as exc:

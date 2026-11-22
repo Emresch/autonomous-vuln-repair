@@ -1,14 +1,14 @@
 {
   "status": "REPAIRED",
   "task_dir": "pipeline/multi_vuln_case",
-  "backend": "ollama",
-  "model_name": "qwen2.5-coder:7b",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
   "environment": {
-    "os": "Darwin",
-    "os_release": "24.6.0",
-    "arch": "arm64",
-    "python_version": "3.13.5",
-    "hardware_hint": "Apple Silicon (arm64)"
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
   },
   "total_findings": 2,
   "findings": [
@@ -40,35 +40,35 @@
       "severity": "HIGH",
       "confidence": "HIGH",
       "code_snippet": "23     if os.path.commonprefix([target_path, base_dir]) != base_dir:",
-      "message": "Insecure path boundary check (CWE-22): 'os.path.commonprefix' (like raw 'str.startswith') compares paths character-by-character rather than by directory segments, allowing sibling-prefix Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed'). Use path-segment-aware 'os.path.commonpath([resolved_target, resolved_base]) == resolved_base' instead.",
+      "message": "Insecure path boundary check (CWE-22): 'os.path.commonprefix' compares paths character-by-character rather than by directory segments, allowing sibling-prefix Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed'). Validate containment using a path-segment-aware canonical path check instead of character-prefix matching.",
       "engine": "Semgrep",
       "filename": "pipeline/multi_vuln_case/service.py",
       "test_id": "pipeline.sast.insecure-commonprefix-path-traversal",
       "cwe": "CWE-22",
-      "issue_text": "Insecure path boundary check (CWE-22): 'os.path.commonprefix' (like raw 'str.startswith') compares paths character-by-character rather than by directory segments, allowing sibling-prefix Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed'). Use path-segment-aware 'os.path.commonpath([resolved_target, resolved_base]) == resolved_base' instead.",
+      "issue_text": "Insecure path boundary check (CWE-22): 'os.path.commonprefix' compares paths character-by-character rather than by directory segments, allowing sibling-prefix Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed'). Validate containment using a path-segment-aware canonical path check instead of character-prefix matching.",
       "code": "23     if os.path.commonprefix([target_path, base_dir]) != base_dir:"
     }
   ],
   "repaired": true,
   "turns_used": 1,
-  "total_duration_seconds": 15.754,
+  "total_duration_seconds": 25.688,
   "rolled_back_to_original": false,
   "final_patches": {
     "pipeline/multi_vuln_case/service.py::get_user_account": "def get_user_account(conn: sqlite3.Connection, username: str) -> Optional[Tuple]:\n    cursor = conn.cursor()\n    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n    cursor.execute(query, (username,))\n    return cursor.fetchone()",
-    "pipeline/multi_vuln_case/service.py::read_user_attachment": "def read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n    base_dir = os.path.realpath(base_directory)\n    target_path = os.path.realpath(os.path.join(base_dir, filename))\n    if os.path.commonpath([target_path, base_dir]) != base_dir:\n        return None\n    if not os.path.exists(target_path):\n        return None\n    try:\n        with open(target_path, \"r\", encoding=\"utf-8\") as f:\n            return f.read()\n    except Exception:\n        return None"
+    "pipeline/multi_vuln_case/service.py::read_user_attachment": "import os\nimport sqlite3\nimport re\nfrom typing import Optional, Tuple, Dict, Any\n\ndef read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n    base_dir = os.path.realpath(base_directory)\n    target_path = os.path.realpath(os.path.join(base_dir, filename))\n    if not target_path.startswith(base_dir + os.sep):\n        return None\n    if not os.path.exists(target_path):\n        return None\n    try:\n        with open(target_path, \"r\", encoding=\"utf-8\") as f:\n            return f.read()\n    except Exception:\n        return None"
   },
   "unified_diff": {
-    "pipeline/multi_vuln_case/service.py": "--- a/pipeline/multi_vuln_case/service.py\n+++ b/pipeline/multi_vuln_case/service.py\n@@ -9,8 +9,8 @@\n \n def get_user_account(conn: sqlite3.Connection, username: str) -> Optional[Tuple]:\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def calculate_user_storage_quota(account_type: str) -> int:\n@@ -20,7 +20,7 @@\n def read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n     base_dir = os.path.realpath(base_directory)\n     target_path = os.path.realpath(os.path.join(base_dir, filename))\n-    if os.path.commonprefix([target_path, base_dir]) != base_dir:\n+    if os.path.commonpath([target_path, base_dir]) != base_dir:\n         return None\n     if not os.path.exists(target_path):\n         return None\n"
+    "pipeline/multi_vuln_case/service.py": "--- a/pipeline/multi_vuln_case/service.py\n+++ b/pipeline/multi_vuln_case/service.py\n@@ -9,8 +9,8 @@\n \n def get_user_account(conn: sqlite3.Connection, username: str) -> Optional[Tuple]:\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def calculate_user_storage_quota(account_type: str) -> int:\n@@ -20,7 +20,7 @@\n def read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n     base_dir = os.path.realpath(base_directory)\n     target_path = os.path.realpath(os.path.join(base_dir, filename))\n-    if os.path.commonprefix([target_path, base_dir]) != base_dir:\n+    if not target_path.startswith(base_dir + os.sep):\n         return None\n     if not os.path.exists(target_path):\n         return None\n"
   },
   "llm_metrics_summary": {
-    "mean_confidence_score": null,
-    "mean_entropy": null
+    "mean_confidence_score": 0.9987,
+    "mean_entropy": 0.0031
   },
   "failure_summary": null,
   "turn_history": [
     {
       "turn": 1,
-      "duration_seconds": 12.752,
+      "duration_seconds": 19.943,
       "stage_failed": null,
       "execution_mode": "parallel",
       "patches": [
@@ -80,37 +80,105 @@
           "syntax_valid": true,
           "syntax_error": null,
           "llm_metrics": {
-            "backend": "ollama",
-            "model_name": "qwen2.5-coder:7b",
-            "duration_seconds": 4.833,
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 6.199,
             "token_count": 60,
-            "confidence_score": null,
-            "entropy": null,
-            "attention_summary": null
+            "confidence_score": 1.0,
+            "entropy": 0.0,
+            "attention_summary": {
+              "focused_token": "def",
+              "peak_weight": 0.0053,
+              "attention_entropy": 4.3437,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "def",
+                  "token_index": 209,
+                  "weight": 0.0053
+                },
+                {
+                  "token": "Tuple",
+                  "token_index": 182,
+                  "weight": 0.0048
+                },
+                {
+                  "token": "SELECT",
+                  "token_index": 239,
+                  "weight": 0.0048
+                },
+                {
+                  "token": "uple",
+                  "token_index": 226,
+                  "weight": 0.0046
+                },
+                {
+                  "token": ".fetchone",
+                  "token_index": 262,
+                  "weight": 0.0045
+                }
+              ]
+            }
           }
         },
         {
           "target": "pipeline/multi_vuln_case/service.py::read_user_attachment",
           "function_name": "read_user_attachment",
           "file": "pipeline/multi_vuln_case/service.py",
-          "patch_code": "def read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n    base_dir = os.path.realpath(base_directory)\n    target_path = os.path.realpath(os.path.join(base_dir, filename))\n    if os.path.commonpath([target_path, base_dir]) != base_dir:\n        return None\n    if not os.path.exists(target_path):\n        return None\n    try:\n        with open(target_path, \"r\", encoding=\"utf-8\") as f:\n            return f.read()\n    except Exception:\n        return None",
+          "patch_code": "import os\nimport sqlite3\nimport re\nfrom typing import Optional, Tuple, Dict, Any\n\ndef read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n    base_dir = os.path.realpath(base_directory)\n    target_path = os.path.realpath(os.path.join(base_dir, filename))\n    if not target_path.startswith(base_dir + os.sep):\n        return None\n    if not os.path.exists(target_path):\n        return None\n    try:\n        with open(target_path, \"r\", encoding=\"utf-8\") as f:\n            return f.read()\n    except Exception:\n        return None",
           "syntax_valid": true,
           "syntax_error": null,
           "llm_metrics": {
-            "backend": "ollama",
-            "model_name": "qwen2.5-coder:7b",
-            "duration_seconds": 7.003,
-            "token_count": 115,
-            "confidence_score": null,
-            "entropy": null,
-            "attention_summary": null
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 12.796,
+            "token_count": 131,
+            "confidence_score": 0.9974,
+            "entropy": 0.0062,
+            "attention_summary": {
+              "focused_token": "os",
+              "peak_weight": 0.0036,
+              "attention_entropy": 4.587,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "os",
+                  "token_index": 233,
+                  "weight": 0.0036
+                },
+                {
+                  "token": "Tuple",
+                  "token_index": 247,
+                  "weight": 0.0035
+                },
+                {
+                  "token": "Dict",
+                  "token_index": 249,
+                  "weight": 0.0035
+                },
+                {
+                  "token": "def",
+                  "token_index": 274,
+                  "weight": 0.0034
+                },
+                {
+                  "token": "Optional",
+                  "token_index": 245,
+                  "weight": 0.0032
+                }
+              ]
+            }
           }
         }
       ],
       "func_pass": true,
       "sec_pass": true,
-      "func_output": ".....                                                                    [100%]\n5 passed in 0.01s",
-      "sec_output": "..                                                                       [100%]\n2 passed in 0.01s",
+      "func_output": ".....                                                                    [100%]\n5 passed in 0.06s",
+      "sec_output": "..                                                                       [100%]\n2 passed in 0.06s",
       "error_feedback": null
     }
   ]

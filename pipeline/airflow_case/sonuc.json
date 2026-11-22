@@ -1,14 +1,14 @@
 {
   "status": "REPAIRED",
   "task_dir": "pipeline/airflow_case",
-  "backend": "ollama",
-  "model_name": "qwen2.5-coder:7b",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
   "environment": {
-    "os": "Darwin",
-    "os_release": "24.6.0",
-    "arch": "arm64",
-    "python_version": "3.13.5",
-    "hardware_hint": "Apple Silicon (arm64)"
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
   },
   "total_findings": 1,
   "findings": [
@@ -33,23 +33,23 @@
   ],
   "repaired": true,
   "turns_used": 1,
-  "total_duration_seconds": 25.633,
+  "total_duration_seconds": 64.581,
   "rolled_back_to_original": false,
   "final_patches": {
-    "pipeline/airflow_case/hive_hook.py::HiveCliHook.run_cli": "    def run_cli(\n        self,\n        hql: str,\n        schema: Optional[str] = None,\n        verbose: bool = True,\n        hive_conf: Optional[Dict[Any, Any]] = None,\n    ) -> Any:\n        schema = schema or self.default_schema\n        if schema:\n            # Validate schema to prevent injection\n            if not self._is_valid_schema(schema):\n                raise ValueError(\"Invalid schema identifier\")\n\n            hql = f\"USE {schema};\\n{hql}\"\n\n        with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n            with NamedTemporaryFile(dir=tmp_dir, delete=False) as f:\n                hql += \"\\n\"\n                f.write(hql.encode(\"UTF-8\"))\n                f.flush()\n                f_name = f.name\n\n            hive_cmd = self._prepare_cli_cmd()\n            hive_cmd.extend([\"-f\", f_name])\n\n            with open(f_name, \"r\", encoding=\"utf-8\") as rf:\n                generated_script = rf.read()\n\n            return {\n                \"status\": \"SUCCESS\",\n                \"schema_used\": schema,\n                \"generated_script\": generated_script,\n                \"cmd\": \" \".join(hive_cmd)\n            }\n\n    def _is_valid_schema(self, schema: str) -> bool:\n        # Define a set of allowed characters\n        allowed_chars = set(\"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_\")\n        return all(char in allowed_chars for char in schema)"
+    "pipeline/airflow_case/hive_hook.py::HiveCliHook.run_cli": "    def run_cli(\n        self,\n        hql: str,\n        schema: Optional[str] = None,\n        verbose: bool = True,\n        hive_conf: Optional[Dict[Any, Any]] = None,\n    ) -> Any:\n        schema = schema or self.default_schema\n        if schema:\n            # Validate schema to prevent injection attacks\n            if not schema.isalnum() and \"_\" not in schema:\n                raise ValueError(\"Invalid schema name. Only alphanumeric characters and underscores are allowed.\")\n            hql = f\"USE {schema};\\n{hql}\"\n\n        with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n            with NamedTemporaryFile(dir=tmp_dir, delete=False) as f:\n                hql += \"\\n\"\n                f.write(hql.encode(\"UTF-8\"))\n                f.flush()\n                f_name = f.name\n\n            hive_cmd = self._prepare_cli_cmd()\n            hive_cmd.extend([\"-f\", f_name])\n\n            with open(f_name, \"r\", encoding=\"utf-8\") as rf:\n                generated_script = rf.read()\n\n            return {\n                \"status\": \"SUCCESS\",\n                \"schema_used\": schema,\n                \"generated_script\": generated_script,\n                \"cmd\": \" \".join(hive_cmd)\n            }"
   },
   "unified_diff": {
-    "pipeline/airflow_case/hive_hook.py": "--- a/pipeline/airflow_case/hive_hook.py\n+++ b/pipeline/airflow_case/hive_hook.py\n@@ -19,6 +19,10 @@\n     ) -> Any:\n         schema = schema or self.default_schema\n         if schema:\n+            # Validate schema to prevent injection\n+            if not self._is_valid_schema(schema):\n+                raise ValueError(\"Invalid schema identifier\")\n+\n             hql = f\"USE {schema};\\n{hql}\"\n \n         with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n@@ -40,3 +44,8 @@\n                 \"generated_script\": generated_script,\n                 \"cmd\": \" \".join(hive_cmd)\n             }\n+\n+    def _is_valid_schema(self, schema: str) -> bool:\n+        # Define a set of allowed characters\n+        allowed_chars = set(\"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_\")\n+        return all(char in allowed_chars for char in schema)\n"
+    "pipeline/airflow_case/hive_hook.py": "--- a/pipeline/airflow_case/hive_hook.py\n+++ b/pipeline/airflow_case/hive_hook.py\n@@ -19,6 +19,9 @@\n     ) -> Any:\n         schema = schema or self.default_schema\n         if schema:\n+            # Validate schema to prevent injection attacks\n+            if not schema.isalnum() and \"_\" not in schema:\n+                raise ValueError(\"Invalid schema name. Only alphanumeric characters and underscores are allowed.\")\n             hql = f\"USE {schema};\\n{hql}\"\n \n         with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n"
   },
   "llm_metrics_summary": {
-    "mean_confidence_score": null,
-    "mean_entropy": null
+    "mean_confidence_score": 0.9932,
+    "mean_entropy": 0.0128
   },
   "failure_summary": null,
   "turn_history": [
     {
       "turn": 1,
-      "duration_seconds": 22.132,
+      "duration_seconds": 55.266,
       "stage_failed": null,
       "execution_mode": "parallel",
       "patches": [
@@ -57,24 +57,58 @@
           "target": "pipeline/airflow_case/hive_hook.py::HiveCliHook.run_cli",
           "function_name": "HiveCliHook.run_cli",
           "file": "pipeline/airflow_case/hive_hook.py",
-          "patch_code": "    def run_cli(\n        self,\n        hql: str,\n        schema: Optional[str] = None,\n        verbose: bool = True,\n        hive_conf: Optional[Dict[Any, Any]] = None,\n    ) -> Any:\n        schema = schema or self.default_schema\n        if schema:\n            # Validate schema to prevent injection\n            if not self._is_valid_schema(schema):\n                raise ValueError(\"Invalid schema identifier\")\n\n            hql = f\"USE {schema};\\n{hql}\"\n\n        with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n            with NamedTemporaryFile(dir=tmp_dir, delete=False) as f:\n                hql += \"\\n\"\n                f.write(hql.encode(\"UTF-8\"))\n                f.flush()\n                f_name = f.name\n\n            hive_cmd = self._prepare_cli_cmd()\n            hive_cmd.extend([\"-f\", f_name])\n\n            with open(f_name, \"r\", encoding=\"utf-8\") as rf:\n                generated_script = rf.read()\n\n            return {\n                \"status\": \"SUCCESS\",\n                \"schema_used\": schema,\n                \"generated_script\": generated_script,\n                \"cmd\": \" \".join(hive_cmd)\n            }\n\n    def _is_valid_schema(self, schema: str) -> bool:\n        # Define a set of allowed characters\n        allowed_chars = set(\"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_\")\n        return all(char in allowed_chars for char in schema)",
+          "patch_code": "    def run_cli(\n        self,\n        hql: str,\n        schema: Optional[str] = None,\n        verbose: bool = True,\n        hive_conf: Optional[Dict[Any, Any]] = None,\n    ) -> Any:\n        schema = schema or self.default_schema\n        if schema:\n            # Validate schema to prevent injection attacks\n            if not schema.isalnum() and \"_\" not in schema:\n                raise ValueError(\"Invalid schema name. Only alphanumeric characters and underscores are allowed.\")\n            hql = f\"USE {schema};\\n{hql}\"\n\n        with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n            with NamedTemporaryFile(dir=tmp_dir, delete=False) as f:\n                hql += \"\\n\"\n                f.write(hql.encode(\"UTF-8\"))\n                f.flush()\n                f_name = f.name\n\n            hive_cmd = self._prepare_cli_cmd()\n            hive_cmd.extend([\"-f\", f_name])\n\n            with open(f_name, \"r\", encoding=\"utf-8\") as rf:\n                generated_script = rf.read()\n\n            return {\n                \"status\": \"SUCCESS\",\n                \"schema_used\": schema,\n                \"generated_script\": generated_script,\n                \"cmd\": \" \".join(hive_cmd)\n            }",
           "syntax_valid": true,
           "syntax_error": null,
           "llm_metrics": {
-            "backend": "ollama",
-            "model_name": "qwen2.5-coder:7b",
-            "duration_seconds": 21.277,
-            "token_count": 310,
-            "confidence_score": null,
-            "entropy": null,
-            "attention_summary": null
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 25.53,
+            "token_count": 266,
+            "confidence_score": 0.9932,
+            "entropy": 0.0128,
+            "attention_summary": {
+              "focused_token": "os",
+              "peak_weight": 0.0026,
+              "attention_entropy": 4.8166,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "os",
+                  "token_index": 243,
+                  "weight": 0.0026
+                },
+                {
+                  "token": "UTF",
+                  "token_index": 415,
+                  "weight": 0.0024
+                },
+                {
+                  "token": "ql",
+                  "token_index": 301,
+                  "weight": 0.0023
+                },
+                {
+                  "token": ".encode",
+                  "token_index": 413,
+                  "weight": 0.0023
+                },
+                {
+                  "token": "if",
+                  "token_index": 350,
+                  "weight": 0.0023
+                }
+              ]
+            }
           }
         }
       ],
       "func_pass": true,
       "sec_pass": true,
-      "func_output": "..                                                                       [100%]\n2 passed in 0.01s",
-      "sec_output": ".                                                                        [100%]\n1 passed in 0.01s",
+      "func_output": "..                                                                       [100%]\n2 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.03s",
       "error_feedback": null
     }
   ]

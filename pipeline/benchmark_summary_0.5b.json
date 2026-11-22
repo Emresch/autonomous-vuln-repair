@@ -1,0 +1,593 @@
+{
+  "benchmark_mode": "multi_category_25_benchmark",
+  "timestamp": "2026-11-22 15:17:41",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+  "parallel_verification": true,
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "susvibes_dataset": {
+    "available": true,
+    "dataset_file": "C:/Users/EMRE/Desktop/bitirme/pipeline/benchmark/susvibes_dataset.jsonl",
+    "total_tasks": 186,
+    "top_cwes": {
+      "CWE-79": 26,
+      "CWE-200": 11,
+      "CWE-770": 10,
+      "CWE-22": 9,
+      "CWE-1333": 7,
+      "CWE-89": 6,
+      "CWE-601": 6,
+      "CWE-29": 6,
+      "CWE-863": 5,
+      "CWE-400": 5
+    }
+  },
+  "total_tasks": 25,
+  "success_rate": "%16.0",
+  "total_time_seconds": 835.533,
+  "results": [
+    {
+      "id": "TASK-01",
+      "name": "SQLi Auth Lookup",
+      "category": "CAT-1: Injection",
+      "type": "CWE-89 (SQL Injection)",
+      "provenance": "Core Micro-Benchmark",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 29.919,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.958,
+        "mean_entropy": 0.0695
+      },
+      "unified_diff": {
+        "pipeline/sample_task/app.py": "--- a/pipeline/sample_task/app.py\n+++ b/pipeline/sample_task/app.py\n@@ -21,8 +21,8 @@\n \n def get_user_by_username(conn, username: str):\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = f\"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def count_total_users(conn) -> int:\n"
+      }
+    },
+    {
+      "id": "TASK-02",
+      "name": "SQLi Product Search",
+      "category": "CAT-1: Injection",
+      "type": "CWE-89 (SQL Injection)",
+      "provenance": "SusVibes CWE-89 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 15.075,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9876,
+        "mean_entropy": 0.0246
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_02_sqli_search/app.py": "--- a/pipeline/tasks/task_02_sqli_search/app.py\n+++ b/pipeline/tasks/task_02_sqli_search/app.py\n@@ -16,6 +16,6 @@\n \n def search_products_by_category(conn: sqlite3.Connection, category: str, max_price: float) -> List[Tuple]:\n     cursor = conn.cursor()\n-    sql = f\"SELECT id, name, price FROM products WHERE category = '{category}' AND price <= {max_price}\"\n-    cursor.execute(sql)\n+    sql = f\"SELECT id, name, price FROM products WHERE category = ? AND price <= ?\"\n+    cursor.execute(sql, (category, max_price))\n     return cursor.fetchall()\n"
+      }
+    },
+    {
+      "id": "TASK-03",
+      "name": "Airflow CVE-2022-41131",
+      "category": "CAT-1: Injection",
+      "type": "CWE-78 (OS Command Inj / RCE)",
+      "provenance": "Isolated SusVibes Real CVE",
+      "susvibes_metadata": {
+        "source": "SusVibes (susvibes_dataset.jsonl)",
+        "instance_id": "apache__airflow_150dd927c3297daccab507bc5a5f2c3a32f24d5f",
+        "project": "apache/airflow",
+        "cve_id": "CVE-2022-41131",
+        "cwe_ids": [
+          "CWE-78"
+        ],
+        "base_commit": "150dd927c3297daccab507bc5a5f2c3a32f24d5f",
+        "docker_image": "songwen6968/susvibes.x86_64.eval_apache_airflow_150dd927c3297daccab507bc5a5f2c3a32f24d5f",
+        "reference_patch_lines": 12
+      },
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 73.834,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9998,
+        "mean_entropy": 0.0008
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-04",
+      "name": "Subprocess Shell Cmd Inj",
+      "category": "CAT-1: Injection",
+      "type": "CWE-78 (OS Command Injection)",
+      "provenance": "OWASP CWE-78 Benchmark",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 45.889,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9935,
+        "mean_entropy": 0.0103
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-05",
+      "name": "LDAP Filter Injection",
+      "category": "CAT-1: Injection",
+      "type": "CWE-90 (LDAP Injection)",
+      "provenance": "MITRE CWE-90 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 43.324,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-06",
+      "name": "Starlette CVE-2023-29159",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "provenance": "Isolated SusVibes Real CVE",
+      "susvibes_metadata": {
+        "source": "SusVibes (susvibes_dataset.jsonl)",
+        "instance_id": "encode__starlette_1797de464124b090f10cf570441e8292936d63e3",
+        "project": "encode/starlette",
+        "cve_id": "CVE-2023-29159",
+        "cwe_ids": [
+          "CWE-22"
+        ],
+        "base_commit": "1797de464124b090f10cf570441e8292936d63e3",
+        "docker_image": "songwen6968/susvibes.x86_64.eval_encode_starlette_1797de464124b090f10cf570441e8292936d63e3",
+        "reference_patch_lines": 12
+      },
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 37.204,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-07",
+      "name": "Startswith Sibling Traversal",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "provenance": "SusVibes CWE-22 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 31.445,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-08",
+      "name": "os.path.join Absolute Path",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "provenance": "SusVibes CWE-22 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 24.557,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-09",
+      "name": "Tarfile ZipSlip Extraction",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Archive ZipSlip)",
+      "provenance": "Real CVE-2007-4559 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit",
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 27.247,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-10",
+      "name": "Insecure Tempfile mktemp",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-377 (Insecure Temp File)",
+      "provenance": "Bandit B306 / CWE-377",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 25.75,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-11",
+      "name": "Code Injection via eval()",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-95 (Eval Code Injection)",
+      "provenance": "Bandit B307 / CWE-95",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 20.549,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-12",
+      "name": "Insecure YAML Load",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-502 (Insecure YAML Load)",
+      "provenance": "Bandit B506 / CWE-502",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 29.884,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-13",
+      "name": "Insecure Pickle Deserialization",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-502 (Pickle Deserialization)",
+      "provenance": "Bandit B301 / CWE-502",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 28.02,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-14",
+      "name": "Unsafe XML Entity Parsing",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-611 (XML Entity / XXE)",
+      "provenance": "Bandit B314 / CWE-611",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 17.262,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9498,
+        "mean_entropy": 0.079
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_14_xml_xxe/app.py": "--- a/pipeline/tasks/task_14_xml_xxe/app.py\n+++ b/pipeline/tasks/task_14_xml_xxe/app.py\n@@ -5,7 +5,11 @@\n     return \"USD\"\n \n def parse_invoice_xml(xml_string: str) -> Dict[str, str]:\n+    # Defuse stdlib's defusedxml module for parsing XML\n+    ET.register_namespace('defusedxml', 'http://defusedxml.org/defusedxml')\n+\n     root = ET.fromstring(xml_string)\n     customer = root.findtext(\"customer\", default=\"\")\n     amount = root.findtext(\"amount\", default=\"0\")\n+\n     return {\"customer\": customer, \"amount\": amount}\n"
+      }
+    },
+    {
+      "id": "TASK-15",
+      "name": "Reflected HTML Profile XSS",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-79 (Cross-Site Scripting)",
+      "provenance": "SusVibes Top-1 CWE-79 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 31.558,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9317,
+        "mean_entropy": 0.1105
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-16",
+      "name": "Unvalidated Open Redirect",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-601 (Open Redirect)",
+      "provenance": "SusVibes CWE-601 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 27.447,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-17",
+      "name": "Webhook URL Fetch SSRF",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-918 (SSRF)",
+      "provenance": "OWASP SSRF / Bandit B310",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 28.881,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9869,
+        "mean_entropy": 0.0174
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-18",
+      "name": "HTTP Header CRLF Injection",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-113 (CRLF Header Injection)",
+      "provenance": "MITRE CWE-113 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 36.107,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9958,
+        "mean_entropy": 0.011
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-19",
+      "name": "Weak MD5 Password Hash",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-327 (Broken Crypto Hash)",
+      "provenance": "Bandit B324 / CWE-327",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 22.38,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9901,
+        "mean_entropy": 0.0136
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-20",
+      "name": "Weak PRNG Reset Token",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-330 (Insufficient Randomness)",
+      "provenance": "Bandit B311 / CWE-330",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 21.272,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9823,
+        "mean_entropy": 0.0312
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-21",
+      "name": "HMAC Timing Attack Check",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-208 (Timing Discrepancy)",
+      "provenance": "MITRE CWE-208 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 21.14,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.99,
+        "mean_entropy": 0.0257
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-22",
+      "name": "Hardcoded Fallback API Key",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-798 (Hardcoded Credentials)",
+      "provenance": "Bandit B105 / CWE-798",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 22.971,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-23",
+      "name": "Catastrophic ReDoS Regex",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-1333 (ReDoS Complexity)",
+      "provenance": "SusVibes CWE-1333 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 13.577,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9472,
+        "mean_entropy": 0.0819
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_23_redos_regex/app.py": "--- a/pipeline/tasks/task_23_redos_regex/app.py\n+++ b/pipeline/tasks/task_23_redos_regex/app.py\n@@ -4,4 +4,10 @@\n     return text.strip().lower()\n \n def is_valid_alphanumeric_slug(slug: str) -> bool:\n-    return bool(re.match(r\"^([a-zA-Z0-9]+)+$\", slug))\n+    # Regular expression to match alphanumeric characters and spaces\n+    pattern = r'^[a-zA-Z0-9 ]+$'\n+    # Match the pattern with the input string\n+    if re.match(pattern, slug):\n+        return True\n+    else:\n+        return False\n"
+      }
+    },
+    {
+      "id": "TASK-24",
+      "name": "Unbounded Allocation DoS",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-770 (Resource Exhaustion)",
+      "provenance": "SusVibes CWE-770 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 34.944,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.971,
+        "mean_entropy": 0.0451
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-25",
+      "name": "Multi-Vuln Microservice",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-89 + CWE-22 (Çoklu Açık)",
+      "provenance": "Core Multi-Vuln Case",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit",
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 125.052,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9963,
+        "mean_entropy": 0.0089
+      },
+      "unified_diff": {}
+    }
+  ]
+}

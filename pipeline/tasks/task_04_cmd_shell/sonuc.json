@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_04_cmd_shell",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B602",
+      "cwe_id": "CWE-78",
+      "file_path": "pipeline/tasks/task_04_cmd_shell/app.py",
+      "line_number": 10,
+      "end_line_number": 10,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "9     cmd = f'\"{sys.executable}\" -c \"print(\\'DIAG_OK:\\' + \\'{token}\\')\"'\n10     proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)\n11     return {",
+      "message": "subprocess call with shell=True identified, security issue.",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_04_cmd_shell/app.py",
+      "test_id": "B602",
+      "cwe": "CWE-78",
+      "issue_text": "subprocess call with shell=True identified, security issue.",
+      "code": "9     cmd = f'\"{sys.executable}\" -c \"print(\\'DIAG_OK:\\' + \\'{token}\\')\"'\n10     proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)\n11     return {"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 51.205,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_04_cmd_shell/app.py::run_echo_diagnostic": "import subprocess\nimport sys\nfrom typing import Dict\n\ndef run_echo_diagnostic(token: str) -> Dict[str, str]:\n    cmd = [sys.executable, '-c', f\"print('DIAG_OK:' + '{token}')\"]\n    proc = subprocess.run(cmd, capture_output=True, text=True)\n    return {\n        \"returncode\": str(proc.returncode),\n        \"output\": proc.stdout.strip(),\n    }"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_04_cmd_shell/app.py": "--- a/pipeline/tasks/task_04_cmd_shell/app.py\n+++ b/pipeline/tasks/task_04_cmd_shell/app.py\n@@ -6,8 +6,8 @@\n     return label.strip().upper()\n \n def run_echo_diagnostic(token: str) -> Dict[str, str]:\n-    cmd = f'\"{sys.executable}\" -c \"print(\\'DIAG_OK:\\' + \\'{token}\\')\"'\n-    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)\n+    cmd = [sys.executable, '-c', f\"print('DIAG_OK:' + '{token}')\"]\n+    proc = subprocess.run(cmd, capture_output=True, text=True)\n     return {\n         \"returncode\": str(proc.returncode),\n         \"output\": proc.stdout.strip(),\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9983,
+    "mean_entropy": 0.0047
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 43.902,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_04_cmd_shell/app.py::run_echo_diagnostic",
+          "function_name": "run_echo_diagnostic",
+          "file": "pipeline/tasks/task_04_cmd_shell/app.py",
+          "patch_code": "import subprocess\nimport sys\nfrom typing import Dict\n\ndef run_echo_diagnostic(token: str) -> Dict[str, str]:\n    cmd = [sys.executable, '-c', f\"print('DIAG_OK:' + '{token}')\"]\n    proc = subprocess.run(cmd, capture_output=True, text=True)\n    return {\n        \"returncode\": str(proc.returncode),\n        \"output\": proc.stdout.strip(),\n    }",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 8.756,
+            "token_count": 92,
+            "confidence_score": 0.9983,
+            "entropy": 0.0047,
+            "attention_summary": {
+              "focused_token": "_echo",
+              "peak_weight": 0.0056,
+              "attention_entropy": 4.2938,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "_echo",
+                  "token_index": 194,
+                  "weight": 0.0056
+                },
+                {
+                  "token": ".strip",
+                  "token_index": 279,
+                  "weight": 0.0048
+                },
+                {
+                  "token": "Dict",
+                  "token_index": 177,
+                  "weight": 0.0038
+                },
+                {
+                  "token": "def",
+                  "token_index": 201,
+                  "weight": 0.0037
+                },
+                {
+                  "token": "[str",
+                  "token_index": 212,
+                  "weight": 0.0036
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.07s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.07s",
+      "error_feedback": null
+    }
+  ]
+}

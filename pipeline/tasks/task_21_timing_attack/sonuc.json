@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_21_timing_attack",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.non-constant-time-secret-comparison",
+      "cwe_id": "CWE-208",
+      "file_path": "pipeline/tasks/task_21_timing_attack/app.py",
+      "line_number": 9,
+      "end_line_number": 9,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "9     return provided_token == expected_secret",
+      "message": "Timing Attack vulnerability in secret/signature comparison (CWE-208): Using the standard '==' operator to compare cryptographic digests, API tokens, or HMAC signatures leaks byte-by-byte timing information. Use a constant-time comparison function instead of '==' or '!='.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_21_timing_attack/app.py",
+      "test_id": "pipeline.sast.non-constant-time-secret-comparison",
+      "cwe": "CWE-208",
+      "issue_text": "Timing Attack vulnerability in secret/signature comparison (CWE-208): Using the standard '==' operator to compare cryptographic digests, API tokens, or HMAC signatures leaks byte-by-byte timing information. Use a constant-time comparison function instead of '==' or '!='.",
+      "code": "9     return provided_token == expected_secret"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 12.451,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_21_timing_attack/app.py::verify_webhook_signature": "import hashlib\nimport hmac\n\ndef verify_webhook_signature(secret_key: str, body: str, provided_token: str) -> bool:\n    expected_secret = compute_webhook_signature(secret_key, body)\n    return hmac.compare_digest(provided_token, expected_secret)"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_21_timing_attack/app.py": "--- a/pipeline/tasks/task_21_timing_attack/app.py\n+++ b/pipeline/tasks/task_21_timing_attack/app.py\n@@ -6,4 +6,4 @@\n \n def verify_webhook_signature(secret_key: str, body: str, provided_token: str) -> bool:\n     expected_secret = compute_webhook_signature(secret_key, body)\n-    return provided_token == expected_secret\n+    return hmac.compare_digest(provided_token, expected_secret)\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 1.0,
+    "mean_entropy": 0.0
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 6.778,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_21_timing_attack/app.py::verify_webhook_signature",
+          "function_name": "verify_webhook_signature",
+          "file": "pipeline/tasks/task_21_timing_attack/app.py",
+          "patch_code": "import hashlib\nimport hmac\n\ndef verify_webhook_signature(secret_key: str, body: str, provided_token: str) -> bool:\n    expected_secret = compute_webhook_signature(secret_key, body)\n    return hmac.compare_digest(provided_token, expected_secret)",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.976,
+            "token_count": 58,
+            "confidence_score": 1.0,
+            "entropy": 0.0,
+            "attention_summary": {
+              "focused_token": "provided",
+              "peak_weight": 0.006,
+              "attention_entropy": 4.3716,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "provided",
+                  "token_index": 261,
+                  "weight": 0.006
+                },
+                {
+                  "token": "_secret",
+                  "token_index": 271,
+                  "weight": 0.0055
+                },
+                {
+                  "token": "def",
+                  "token_index": 247,
+                  "weight": 0.0055
+                },
+                {
+                  "token": "hmac",
+                  "token_index": 223,
+                  "weight": 0.0051
+                },
+                {
+                  "token": "_token",
+                  "token_index": 262,
+                  "weight": 0.005
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_18_crlf_header",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.http-header-crlf-injection",
+      "cwe_id": "CWE-113",
+      "file_path": "pipeline/tasks/task_18_crlf_header/app.py",
+      "line_number": 7,
+      "end_line_number": 7,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "7     return f\"Content-Disposition: attachment; filename={filename}\"",
+      "message": "HTTP Response Splitting / CRLF Header Injection (CWE-113): Unvalidated user input is interpolated into an HTTP header line without stripping or rejecting carriage return ('\\\\r') and newline ('\\\\n') characters, allowing attackers to inject arbitrary HTTP headers or split responses. Reject or strip CR/LF control characters.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_18_crlf_header/app.py",
+      "test_id": "pipeline.sast.http-header-crlf-injection",
+      "cwe": "CWE-113",
+      "issue_text": "HTTP Response Splitting / CRLF Header Injection (CWE-113): Unvalidated user input is interpolated into an HTTP header line without stripping or rejecting carriage return ('\\\\r') and newline ('\\\\n') characters, allowing attackers to inject arbitrary HTTP headers or split responses. Reject or strip CR/LF control characters.",
+      "code": "7     return f\"Content-Disposition: attachment; filename={filename}\""
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 13.18,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_18_crlf_header/app.py::build_download_disposition_header": "import re\n\ndef build_download_disposition_header(filename: str) -> str:\n    # Strip any CR/LF characters from the filename\n    safe_filename = re.sub(r'[\\r\\n]', '', filename)\n    return f\"Content-Disposition: attachment; filename={safe_filename}\""
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_18_crlf_header/app.py": "--- a/pipeline/tasks/task_18_crlf_header/app.py\n+++ b/pipeline/tasks/task_18_crlf_header/app.py\n@@ -4,4 +4,6 @@\n     return \"/\"\n \n def build_download_disposition_header(filename: str) -> str:\n-    return f\"Content-Disposition: attachment; filename={filename}\"\n+    # Strip any CR/LF characters from the filename\n+    safe_filename = re.sub(r'[\\r\\n]', '', filename)\n+    return f\"Content-Disposition: attachment; filename={safe_filename}\"\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9815,
+    "mean_entropy": 0.034
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 7.343,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_18_crlf_header/app.py::build_download_disposition_header",
+          "function_name": "build_download_disposition_header",
+          "file": "pipeline/tasks/task_18_crlf_header/app.py",
+          "patch_code": "import re\n\ndef build_download_disposition_header(filename: str) -> str:\n    # Strip any CR/LF characters from the filename\n    safe_filename = re.sub(r'[\\r\\n]', '', filename)\n    return f\"Content-Disposition: attachment; filename={safe_filename}\"",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 6.527,
+            "token_count": 62,
+            "confidence_score": 0.9815,
+            "entropy": 0.034,
+            "attention_summary": {
+              "focused_token": "(filename",
+              "peak_weight": 0.0087,
+              "attention_entropy": 4.3239,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "(filename",
+                  "token_index": 264,
+                  "weight": 0.0087
+                },
+                {
+                  "token": "filename",
+                  "token_index": 282,
+                  "weight": 0.0069
+                },
+                {
+                  "token": "filename",
+                  "token_index": 280,
+                  "weight": 0.0054
+                },
+                {
+                  "token": "def",
+                  "token_index": 258,
+                  "weight": 0.0043
+                },
+                {
+                  "token": "position",
+                  "token_index": 252,
+                  "weight": 0.004
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

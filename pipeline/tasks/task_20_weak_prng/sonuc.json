@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_20_weak_prng",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B311",
+      "cwe_id": "CWE-330",
+      "file_path": "pipeline/tasks/task_20_weak_prng/app.py",
+      "line_number": 11,
+      "end_line_number": 11,
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "code_snippet": "10 def generate_password_reset_code(length: int = 24) -> str:\n11     return \"\".join(random.choice(ALPHABET) for _ in range(length))",
+      "message": "Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_20_weak_prng/app.py",
+      "test_id": "B311",
+      "cwe": "CWE-330",
+      "issue_text": "Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
+      "code": "10 def generate_password_reset_code(length: int = 24) -> str:\n11     return \"\".join(random.choice(ALPHABET) for _ in range(length))"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 12.187,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_20_weak_prng/app.py::generate_password_reset_code": "import secrets\n\nALPHABET = string.ascii_letters + string.digits\n\ndef generate_password_reset_code(length: int = 24) -> str:\n    return \"\".join(secrets.choice(ALPHABET) for _ in range(length))"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_20_weak_prng/app.py": "--- a/pipeline/tasks/task_20_weak_prng/app.py\n+++ b/pipeline/tasks/task_20_weak_prng/app.py\n@@ -8,4 +8,4 @@\n     return 16\n \n def generate_password_reset_code(length: int = 24) -> str:\n-    return \"\".join(random.choice(ALPHABET) for _ in range(length))\n+    return \"\".join(secrets.choice(ALPHABET) for _ in range(length))\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9856,
+    "mean_entropy": 0.0342
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 6.418,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_20_weak_prng/app.py::generate_password_reset_code",
+          "function_name": "generate_password_reset_code",
+          "file": "pipeline/tasks/task_20_weak_prng/app.py",
+          "patch_code": "import secrets\n\nALPHABET = string.ascii_letters + string.digits\n\ndef generate_password_reset_code(length: int = 24) -> str:\n    return \"\".join(secrets.choice(ALPHABET) for _ in range(length))",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.608,
+            "token_count": 55,
+            "confidence_score": 0.9856,
+            "entropy": 0.0342,
+            "attention_summary": {
+              "focused_token": "(AL",
+              "peak_weight": 0.0067,
+              "attention_entropy": 4.0092,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "(AL",
+                  "token_index": 227,
+                  "weight": 0.0067
+                },
+                {
+                  "token": "ET",
+                  "token_index": 230,
+                  "weight": 0.0066
+                },
+                {
+                  "token": "def",
+                  "token_index": 205,
+                  "weight": 0.005
+                },
+                {
+                  "token": "secrets",
+                  "token_index": 178,
+                  "weight": 0.005
+                },
+                {
+                  "token": "PH",
+                  "token_index": 228,
+                  "weight": 0.0047
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "error_feedback": null
+    }
+  ]
+}

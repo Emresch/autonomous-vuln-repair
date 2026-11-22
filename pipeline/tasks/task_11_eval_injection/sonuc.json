@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_11_eval_injection",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B307",
+      "cwe_id": "CWE-78",
+      "file_path": "pipeline/tasks/task_11_eval_injection/app.py",
+      "line_number": 8,
+      "end_line_number": 8,
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "code_snippet": "7 def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n8     parsed = eval(payload_str)\n9     if not isinstance(parsed, dict):",
+      "message": "Use of possibly insecure function - consider using safer ast.literal_eval.",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_11_eval_injection/app.py",
+      "test_id": "B307",
+      "cwe": "CWE-78",
+      "issue_text": "Use of possibly insecure function - consider using safer ast.literal_eval.",
+      "code": "7 def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n8     parsed = eval(payload_str)\n9     if not isinstance(parsed, dict):"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 13.052,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_11_eval_injection/app.py::parse_client_literal_payload": "def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n    try:\n        parsed = ast.literal_eval(payload_str)\n        if not isinstance(parsed, dict):\n            raise ValueError(\"Payload must evaluate to a dictionary\")\n        return parsed\n    except (ValueError, SyntaxError):\n        raise ValueError(\"Invalid payload format\")"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_11_eval_injection/app.py": "--- a/pipeline/tasks/task_11_eval_injection/app.py\n+++ b/pipeline/tasks/task_11_eval_injection/app.py\n@@ -5,7 +5,10 @@\n     return isinstance(obj, dict)\n \n def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n-    parsed = eval(payload_str)\n-    if not isinstance(parsed, dict):\n-        raise ValueError(\"Payload must evaluate to a dictionary\")\n-    return parsed\n+    try:\n+        parsed = ast.literal_eval(payload_str)\n+        if not isinstance(parsed, dict):\n+            raise ValueError(\"Payload must evaluate to a dictionary\")\n+        return parsed\n+    except (ValueError, SyntaxError):\n+        raise ValueError(\"Invalid payload format\")\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9826,
+    "mean_entropy": 0.0132
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 7.438,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_11_eval_injection/app.py::parse_client_literal_payload",
+          "function_name": "parse_client_literal_payload",
+          "file": "pipeline/tasks/task_11_eval_injection/app.py",
+          "patch_code": "def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n    try:\n        parsed = ast.literal_eval(payload_str)\n        if not isinstance(parsed, dict):\n            raise ValueError(\"Payload must evaluate to a dictionary\")\n        return parsed\n    except (ValueError, SyntaxError):\n        raise ValueError(\"Invalid payload format\")",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 6.64,
+            "token_count": 73,
+            "confidence_score": 0.9826,
+            "entropy": 0.0132,
+            "attention_summary": {
+              "focused_token": "if",
+              "peak_weight": 0.0075,
+              "attention_entropy": 4.2903,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "if",
+                  "token_index": 227,
+                  "weight": 0.0075
+                },
+                {
+                  "token": "dictionary",
+                  "token_index": 243,
+                  "weight": 0.0052
+                },
+                {
+                  "token": "_str",
+                  "token_index": 209,
+                  "weight": 0.0052
+                },
+                {
+                  "token": "raise",
+                  "token_index": 235,
+                  "weight": 0.005
+                },
+                {
+                  "token": "_payload",
+                  "token_index": 198,
+                  "weight": 0.0049
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

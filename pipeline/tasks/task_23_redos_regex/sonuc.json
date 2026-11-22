@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_23_redos_regex",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.catastrophic-backtracking-redos",
+      "cwe_id": "CWE-1333",
+      "file_path": "pipeline/tasks/task_23_redos_regex/app.py",
+      "line_number": 7,
+      "end_line_number": 7,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "7     return bool(re.match(r\"^([a-zA-Z0-9]+)+$\", slug))",
+      "message": "Regular Expression Denial of Service / ReDoS (CWE-1333): Nested quantifiers such as '([a-zA-Z0-9]+)+' cause exponential catastrophic backtracking on non-matching inputs, freezing the CPU. Simplify the regular expression to eliminate nested repeating groups and enforce a reasonable maximum input length.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_23_redos_regex/app.py",
+      "test_id": "pipeline.sast.catastrophic-backtracking-redos",
+      "cwe": "CWE-1333",
+      "issue_text": "Regular Expression Denial of Service / ReDoS (CWE-1333): Nested quantifiers such as '([a-zA-Z0-9]+)+' cause exponential catastrophic backtracking on non-matching inputs, freezing the CPU. Simplify the regular expression to eliminate nested repeating groups and enforce a reasonable maximum input length.",
+      "code": "7     return bool(re.match(r\"^([a-zA-Z0-9]+)+$\", slug))"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 11.456,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_23_redos_regex/app.py::is_valid_alphanumeric_slug": "import re\n\ndef is_valid_alphanumeric_slug(slug: str) -> bool:\n    return bool(re.match(r\"^[a-zA-Z0-9]{1,255}$\", slug))"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_23_redos_regex/app.py": "--- a/pipeline/tasks/task_23_redos_regex/app.py\n+++ b/pipeline/tasks/task_23_redos_regex/app.py\n@@ -4,4 +4,4 @@\n     return text.strip().lower()\n \n def is_valid_alphanumeric_slug(slug: str) -> bool:\n-    return bool(re.match(r\"^([a-zA-Z0-9]+)+$\", slug))\n+    return bool(re.match(r\"^[a-zA-Z0-9]{1,255}$\", slug))\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9889,
+    "mean_entropy": 0.0267
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 5.788,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_23_redos_regex/app.py::is_valid_alphanumeric_slug",
+          "function_name": "is_valid_alphanumeric_slug",
+          "file": "pipeline/tasks/task_23_redos_regex/app.py",
+          "patch_code": "import re\n\ndef is_valid_alphanumeric_slug(slug: str) -> bool:\n    return bool(re.match(r\"^[a-zA-Z0-9]{1,255}$\", slug))",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 4.973,
+            "token_count": 45,
+            "confidence_score": 0.9889,
+            "entropy": 0.0267,
+            "attention_summary": {
+              "focused_token": "_slug",
+              "peak_weight": 0.009,
+              "attention_entropy": 4.2837,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "_slug",
+                  "token_index": 255,
+                  "weight": 0.009
+                },
+                {
+                  "token": "_slug",
+                  "token_index": 265,
+                  "weight": 0.0066
+                },
+                {
+                  "token": "(slug",
+                  "token_index": 266,
+                  "weight": 0.0066
+                },
+                {
+                  "token": "def",
+                  "token_index": 260,
+                  "weight": 0.0056
+                },
+                {
+                  "token": "slug",
+                  "token_index": 290,
+                  "weight": 0.0054
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

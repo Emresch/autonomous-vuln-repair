@@ -332,12 +332,102 @@ def test_docker_sealed_sandbox_flags_and_timeout_cleanup():
     mock_cleanup.assert_called_once()
 
 
-def test_transformers_backend_skeleton_contract():
-    """Arkadaşın dolduracağı TransformersBackend iskeleti net NotImplementedError vermelidir."""
-    synth = PatchSynthesizer(backend="transformers", model_name="Qwen/Qwen2.5-Coder-1.5B-Instruct")
+def test_transformers_backend_model_mapping_and_telemetry():
+    """
+    TransformersBackend:
+    1. Ollama formatındaki model adını ('qwen2.5-coder:7b') Hugging Face repo kimliğine dönüştürmeli.
+    2. apply_chat_template + generate(output_scores=True, output_attentions=True) üzerinden
+       confidence_score, Shannon entropy ve attention_summary metriklerini doğru hesaplamalı.
+    """
+    synth = PatchSynthesizer(backend="transformers", model_name="qwen2.5-coder:7b")
     assert isinstance(synth.backend, TransformersBackend)
-    with pytest.raises(NotImplementedError, match="TransformersBackend"):
-        synth.synthesize([{"role": "user", "content": "fix"}])
+    assert synth.model_name == "Qwen/Qwen2.5-Coder-7B-Instruct"
+    assert synth.backend.model_name == "Qwen/Qwen2.5-Coder-7B-Instruct"
+
+    class DummyTokenizer:
+        pad_token = "<pad>"
+        eos_token = "<eos>"
+        pad_token_id = 0
+
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            return "prompt_text"
+
+        def __call__(self, text, return_tensors="pt"):
+            # 4 prompt token: [10, 11, 12, 13]
+            return {"input_ids": [[10, 11, 12, 13]]}
+
+        def convert_ids_to_tokens(self, ids):
+            mapping = {10: "<|im_start|>", 11: "def", 12: "execute_query", 13: "username"}
+            return [mapping.get(i, f"t{i}") for i in ids]
+
+        def decode(self, token_ids, skip_special_tokens=True):
+            return "```python\ndef get_user(conn, u):\n    return conn.execute('SELECT ?', (u,))\n```"
+
+    class DummyOutputs:
+        # 4 prompt token + 2 yeni üretilen token (id=1 ve id=2)
+        sequences = [[10, 11, 12, 13, 1, 2]]
+        # Her adım için 4 kelimelik sözlük logitleri: seçilen indeks (1 ve 2) yüksek logit (4.0)
+        scores = [
+            [[0.0, 4.0, 0.0, 0.0]],
+            [[0.0, 0.0, 4.0, 0.0]],
+        ]
+        # 2 üretim adımı x 2 katman x [batch=1, heads=2, q_len=1, kv_len=4]
+        # İndeks 2 ('execute_query') en yüksek attention ağırlığına (0.70) sahip
+        attentions = [
+            (
+                [[[[0.10, 0.10, 0.70, 0.10]], [[0.05, 0.15, 0.65, 0.15]]]],
+                [[[[0.05, 0.10, 0.75, 0.10]], [[0.05, 0.15, 0.65, 0.15]]]],
+            ),
+            (
+                [[[[0.10, 0.10, 0.70, 0.10]], [[0.10, 0.10, 0.70, 0.10]]]],
+                [[[[0.05, 0.15, 0.70, 0.10]], [[0.05, 0.15, 0.70, 0.10]]]],
+            ),
+        ]
+
+    class DummyModel:
+        device = "cpu"
+
+        def generate(self, **kwargs):
+            assert kwargs.get("return_dict_in_generate") is True
+            assert kwargs.get("output_scores") is True
+            return DummyOutputs()
+
+    backend = synth.backend
+    backend._tokenizer = DummyTokenizer()
+    backend._model = DummyModel()
+
+    res = synth.synthesize([{"role": "user", "content": "fix sql injection"}])
+    assert res.backend == "transformers"
+    assert res.model_name == "Qwen/Qwen2.5-Coder-7B-Instruct"
+    assert res.token_count == 2
+    assert "SELECT ?" in res.extracted_code
+    assert res.confidence_score is not None and res.confidence_score > 0.90
+    assert res.entropy is not None and 0.0 < res.entropy < 0.50
+    assert res.attention_summary is not None
+    assert res.attention_summary["focused_token"] == "execute_query"
+    assert res.attention_summary["peak_weight"] == 0.7
+    assert res.attention_summary["num_layers"] == 2
+    assert res.attention_summary["num_heads"] == 2
+    assert res.attention_summary["hallucination_risk"] == "LOW"
+
+
+def test_multi_target_feedback_isolates_healthy_function():
+    """
+    Çoklu zafiyet onarımında hata yalnızca 2. fonksiyondan kaynaklanıyorsa,
+    1. fonksiyona 'CRITICAL: DO NOT repeat your previous implementation unchanged!' denmemelidir.
+    """
+    tb = "FAILED sec_test.py::test_traversal - AssertionError in read_user_attachment"
+
+    msg_healthy = PatchSynthesizer.build_feedback_message(
+        tb, turn_number=1, target_function="get_user_account", is_multi_target=True
+    )
+    msg_broken = PatchSynthesizer.build_feedback_message(
+        tb, turn_number=1, target_function="read_user_attachment", is_multi_target=True
+    )
+
+    assert "NOT referenced in the failure above" in msg_healthy["content"]
+    assert "CRITICAL: DO NOT repeat" not in msg_healthy["content"]
+    assert "CRITICAL: DO NOT repeat" in msg_broken["content"]
 
 
 def test_benchmark_ingestion_metadata_lookup(tmp_path: Path):

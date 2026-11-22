@@ -1,0 +1,631 @@
+{
+  "benchmark_mode": "multi_category_25_benchmark",
+  "timestamp": "2026-11-22 16:21:22",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "parallel_verification": true,
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "susvibes_dataset": {
+    "available": true,
+    "dataset_file": "C:/Users/EMRE/Desktop/bitirme/pipeline/benchmark/susvibes_dataset.jsonl",
+    "total_tasks": 186,
+    "top_cwes": {
+      "CWE-79": 26,
+      "CWE-200": 11,
+      "CWE-770": 10,
+      "CWE-22": 9,
+      "CWE-1333": 7,
+      "CWE-89": 6,
+      "CWE-601": 6,
+      "CWE-29": 6,
+      "CWE-863": 5,
+      "CWE-400": 5
+    }
+  },
+  "total_tasks": 25,
+  "success_rate": "%92.0",
+  "total_time_seconds": 839.006,
+  "results": [
+    {
+      "id": "TASK-01",
+      "name": "SQLi Auth Lookup",
+      "category": "CAT-1: Injection",
+      "type": "CWE-89 (SQL Injection)",
+      "provenance": "Core Micro-Benchmark",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 39.49,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {
+        "pipeline/sample_task/app.py": "--- a/pipeline/sample_task/app.py\n+++ b/pipeline/sample_task/app.py\n@@ -21,8 +21,8 @@\n \n def get_user_by_username(conn, username: str):\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def count_total_users(conn) -> int:\n"
+      }
+    },
+    {
+      "id": "TASK-02",
+      "name": "SQLi Product Search",
+      "category": "CAT-1: Injection",
+      "type": "CWE-89 (SQL Injection)",
+      "provenance": "SusVibes CWE-89 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 14.615,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9913,
+        "mean_entropy": 0.009
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_02_sqli_search/app.py": "--- a/pipeline/tasks/task_02_sqli_search/app.py\n+++ b/pipeline/tasks/task_02_sqli_search/app.py\n@@ -16,6 +16,6 @@\n \n def search_products_by_category(conn: sqlite3.Connection, category: str, max_price: float) -> List[Tuple]:\n     cursor = conn.cursor()\n-    sql = f\"SELECT id, name, price FROM products WHERE category = '{category}' AND price <= {max_price}\"\n-    cursor.execute(sql)\n+    sql = \"SELECT id, name, price FROM products WHERE category = ? AND price <= ?\"\n+    cursor.execute(sql, (category, max_price))\n     return cursor.fetchall()\n"
+      }
+    },
+    {
+      "id": "TASK-03",
+      "name": "Airflow CVE-2022-41131",
+      "category": "CAT-1: Injection",
+      "type": "CWE-78 (OS Command Inj / RCE)",
+      "provenance": "Isolated SusVibes Real CVE",
+      "susvibes_metadata": {
+        "source": "SusVibes (susvibes_dataset.jsonl)",
+        "instance_id": "apache__airflow_150dd927c3297daccab507bc5a5f2c3a32f24d5f",
+        "project": "apache/airflow",
+        "cve_id": "CVE-2022-41131",
+        "cwe_ids": [
+          "CWE-78"
+        ],
+        "base_commit": "150dd927c3297daccab507bc5a5f2c3a32f24d5f",
+        "docker_image": "songwen6968/susvibes.x86_64.eval_apache_airflow_150dd927c3297daccab507bc5a5f2c3a32f24d5f",
+        "reference_patch_lines": 12
+      },
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 64.583,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9932,
+        "mean_entropy": 0.0128
+      },
+      "unified_diff": {
+        "pipeline/airflow_case/hive_hook.py": "--- a/pipeline/airflow_case/hive_hook.py\n+++ b/pipeline/airflow_case/hive_hook.py\n@@ -19,6 +19,9 @@\n     ) -> Any:\n         schema = schema or self.default_schema\n         if schema:\n+            # Validate schema to prevent injection attacks\n+            if not schema.isalnum() and \"_\" not in schema:\n+                raise ValueError(\"Invalid schema name. Only alphanumeric characters and underscores are allowed.\")\n             hql = f\"USE {schema};\\n{hql}\"\n \n         with TemporaryDirectory(prefix=\"airflow_hiveop_\") as tmp_dir:\n"
+      }
+    },
+    {
+      "id": "TASK-04",
+      "name": "Subprocess Shell Cmd Inj",
+      "category": "CAT-1: Injection",
+      "type": "CWE-78 (OS Command Injection)",
+      "provenance": "OWASP CWE-78 Benchmark",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 15.885,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9983,
+        "mean_entropy": 0.0047
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_04_cmd_shell/app.py": "--- a/pipeline/tasks/task_04_cmd_shell/app.py\n+++ b/pipeline/tasks/task_04_cmd_shell/app.py\n@@ -6,8 +6,8 @@\n     return label.strip().upper()\n \n def run_echo_diagnostic(token: str) -> Dict[str, str]:\n-    cmd = f'\"{sys.executable}\" -c \"print(\\'DIAG_OK:\\' + \\'{token}\\')\"'\n-    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)\n+    cmd = [sys.executable, '-c', f\"print('DIAG_OK:' + '{token}')\"]\n+    proc = subprocess.run(cmd, capture_output=True, text=True)\n     return {\n         \"returncode\": str(proc.returncode),\n         \"output\": proc.stdout.strip(),\n"
+      }
+    },
+    {
+      "id": "TASK-05",
+      "name": "LDAP Filter Injection",
+      "category": "CAT-1: Injection",
+      "type": "CWE-90 (LDAP Injection)",
+      "provenance": "MITRE CWE-90 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 2,
+      "duration": 27.57,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9925,
+        "mean_entropy": 0.0049
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_05_ldap_inj/app.py": "--- a/pipeline/tasks/task_05_ldap_inj/app.py\n+++ b/pipeline/tasks/task_05_ldap_inj/app.py\n@@ -10,7 +10,12 @@\n     return \"corp.example.com\"\n \n def build_and_lookup_ldap_user(username: str) -> Optional[Dict[str, str]]:\n-    ldap_filter = f\"(&(objectClass=user)(uid={username}))\"\n+    # Escape special LDAP filter characters\n+    escaped_username = re.escape(username)\n+    ldap_filter = f\"(&(objectClass=user)(uid={escaped_username}))\"\n+\n+    # Check for potentially dangerous patterns\n     if \"*)\" in ldap_filter or \"|(uid=\" in ldap_filter:\n-        return MOCK_DIRECTORY[\"(&(objectClass=user)(uid=admin))\"]\n+        return None\n+\n     return MOCK_DIRECTORY.get(ldap_filter)\n"
+      }
+    },
+    {
+      "id": "TASK-06",
+      "name": "Starlette CVE-2023-29159",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "provenance": "Isolated SusVibes Real CVE",
+      "susvibes_metadata": {
+        "source": "SusVibes (susvibes_dataset.jsonl)",
+        "instance_id": "encode__starlette_1797de464124b090f10cf570441e8292936d63e3",
+        "project": "encode/starlette",
+        "cve_id": "CVE-2023-29159",
+        "cwe_ids": [
+          "CWE-22"
+        ],
+        "base_commit": "1797de464124b090f10cf570441e8292936d63e3",
+        "docker_image": "songwen6968/susvibes.x86_64.eval_encode_starlette_1797de464124b090f10cf570441e8292936d63e3",
+        "reference_patch_lines": 12
+      },
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 18.055,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9985,
+        "mean_entropy": 0.0048
+      },
+      "unified_diff": {
+        "pipeline/starlette_case/staticfiles.py": "--- a/pipeline/starlette_case/staticfiles.py\n+++ b/pipeline/starlette_case/staticfiles.py\n@@ -18,7 +18,7 @@\n             else:\n                 full_path = os.path.realpath(joined_path)\n             directory = os.path.realpath(directory)\n-            if os.path.commonprefix([full_path, directory]) != directory:\n+            if not full_path.startswith(directory + os.sep):\n                 continue\n             try:\n                 return full_path, os.stat(full_path)\n"
+      }
+    },
+    {
+      "id": "TASK-07",
+      "name": "Startswith Sibling Traversal",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "provenance": "SusVibes CWE-22 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 15.871,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.994,
+        "mean_entropy": 0.0054
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_07_startswith_traversal/app.py": "--- a/pipeline/tasks/task_07_startswith_traversal/app.py\n+++ b/pipeline/tasks/task_07_startswith_traversal/app.py\n@@ -7,7 +7,7 @@\n def load_tenant_document(tenant_root: str, relative_doc: str) -> Optional[str]:\n     base_dir = os.path.abspath(tenant_root)\n     candidate = os.path.abspath(os.path.join(base_dir, relative_doc))\n-    if not candidate.startswith(base_dir):\n+    if not candidate.startswith(base_dir + os.sep):\n         raise PermissionError(\"Path outside tenant root\")\n     if not os.path.isfile(candidate):\n         return None\n"
+      }
+    },
+    {
+      "id": "TASK-08",
+      "name": "os.path.join Absolute Path",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Path Traversal)",
+      "provenance": "SusVibes CWE-22 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 16.813,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9712,
+        "mean_entropy": 0.0225
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_08_join_traversal/app.py": "--- a/pipeline/tasks/task_08_join_traversal/app.py\n+++ b/pipeline/tasks/task_08_join_traversal/app.py\n@@ -1,3 +1,4 @@\n+from pathlib import Path\n import os\n from typing import Optional\n \n@@ -5,8 +6,15 @@\n     return f\"[LOG:{name}]\"\n \n def read_log_file(logs_dir: str, log_name: str) -> Optional[str]:\n-    target = os.path.join(logs_dir, log_name)\n-    if not os.path.exists(target):\n+    base = Path(logs_dir).resolve()\n+    target = base.joinpath(log_name).resolve()\n+\n+    # Ensure the resolved path is within the base directory\n+    if not target.is_relative_to(base):\n         return None\n+\n+    if not target.exists():\n+        return None\n+\n     with open(target, \"r\", encoding=\"utf-8\") as f:\n         return f.read()\n"
+      }
+    },
+    {
+      "id": "TASK-09",
+      "name": "Tarfile ZipSlip Extraction",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-22 (Archive ZipSlip)",
+      "provenance": "Real CVE-2007-4559 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit",
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 62.743,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9989,
+        "mean_entropy": 0.0032
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-10",
+      "name": "Insecure Tempfile mktemp",
+      "category": "CAT-2: Path & File Safety",
+      "type": "CWE-377 (Insecure Temp File)",
+      "provenance": "Bandit B306 / CWE-377",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.042,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9919,
+        "mean_entropy": 0.0139
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_10_insecure_tempfile/app.py": "--- a/pipeline/tasks/task_10_insecure_tempfile/app.py\n+++ b/pipeline/tasks/task_10_insecure_tempfile/app.py\n@@ -5,7 +5,7 @@\n     return title.strip().title()\n \n def write_temporary_report(content: str) -> str:\n-    tmp_path = tempfile.mktemp(prefix=\"avr_report_\", suffix=\".txt\")\n-    with open(tmp_path, \"w\", encoding=\"utf-8\") as f:\n+    with tempfile.NamedTemporaryFile(mode=\"w\", prefix=\"avr_report_\", suffix=\".txt\", delete=False) as f:\n+        tmp_path = f.name\n         f.write(content)\n     return tmp_path\n"
+      }
+    },
+    {
+      "id": "TASK-11",
+      "name": "Code Injection via eval()",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-95 (Eval Code Injection)",
+      "provenance": "Bandit B307 / CWE-95",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 13.053,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9826,
+        "mean_entropy": 0.0132
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_11_eval_injection/app.py": "--- a/pipeline/tasks/task_11_eval_injection/app.py\n+++ b/pipeline/tasks/task_11_eval_injection/app.py\n@@ -5,7 +5,10 @@\n     return isinstance(obj, dict)\n \n def parse_client_literal_payload(payload_str: str) -> Dict[str, Any]:\n-    parsed = eval(payload_str)\n-    if not isinstance(parsed, dict):\n-        raise ValueError(\"Payload must evaluate to a dictionary\")\n-    return parsed\n+    try:\n+        parsed = ast.literal_eval(payload_str)\n+        if not isinstance(parsed, dict):\n+            raise ValueError(\"Payload must evaluate to a dictionary\")\n+        return parsed\n+    except (ValueError, SyntaxError):\n+        raise ValueError(\"Invalid payload format\")\n"
+      }
+    },
+    {
+      "id": "TASK-12",
+      "name": "Insecure YAML Load",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-502 (Insecure YAML Load)",
+      "provenance": "Bandit B506 / CWE-502",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.443,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9976,
+        "mean_entropy": 0.0066
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_12_yaml_load/app.py": "--- a/pipeline/tasks/task_12_yaml_load/app.py\n+++ b/pipeline/tasks/task_12_yaml_load/app.py\n@@ -5,7 +5,7 @@\n     return \"v1.0\"\n \n def load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n-    data = yaml.load(yaml_text, Loader=yaml.Loader)\n+    data = yaml.safe_load(yaml_text)\n     if not isinstance(data, dict):\n         raise ValueError(\"Configuration root must be a mapping\")\n     return data\n"
+      }
+    },
+    {
+      "id": "TASK-13",
+      "name": "Insecure Pickle Deserialization",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-502 (Pickle Deserialization)",
+      "provenance": "Bandit B301 / CWE-502",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 13.771,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9914,
+        "mean_entropy": 0.0146
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_13_pickle_loads/app.py": "--- a/pipeline/tasks/task_13_pickle_loads/app.py\n+++ b/pipeline/tasks/task_13_pickle_loads/app.py\n@@ -12,4 +12,4 @@\n     try:\n         return json.loads(raw_bytes.decode(\"utf-8\"))\n     except Exception:\n-        return pickle.loads(raw_bytes)\n+        raise ValueError(\"Invalid token format\")\n"
+      }
+    },
+    {
+      "id": "TASK-14",
+      "name": "Unsafe XML Entity Parsing",
+      "category": "CAT-3: Deserialization & Eval",
+      "type": "CWE-611 (XML Entity / XXE)",
+      "provenance": "Bandit B314 / CWE-611",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 48.379,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_14_xml_xxe/app.py": "--- a/pipeline/tasks/task_14_xml_xxe/app.py\n+++ b/pipeline/tasks/task_14_xml_xxe/app.py\n@@ -1,3 +1,4 @@\n+from defusedxml.ElementTree import fromstring\n import xml.etree.ElementTree as ET\n from typing import Dict\n \n@@ -5,7 +6,7 @@\n     return \"USD\"\n \n def parse_invoice_xml(xml_string: str) -> Dict[str, str]:\n-    root = ET.fromstring(xml_string)\n+    root = fromstring(xml_string)\n     customer = root.findtext(\"customer\", default=\"\")\n     amount = root.findtext(\"amount\", default=\"0\")\n     return {\"customer\": customer, \"amount\": amount}\n"
+      }
+    },
+    {
+      "id": "TASK-15",
+      "name": "Reflected HTML Profile XSS",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-79 (Cross-Site Scripting)",
+      "provenance": "SusVibes Top-1 CWE-79 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 13.411,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9953,
+        "mean_entropy": 0.0122
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_15_html_xss/app.py": "--- a/pipeline/tasks/task_15_html_xss/app.py\n+++ b/pipeline/tasks/task_15_html_xss/app.py\n@@ -4,4 +4,6 @@\n     return role.strip().upper()\n \n def render_user_profile_card(display_name: str, bio: str) -> str:\n-    return f\"<div class='profile'><h2>{display_name}</h2><p>{bio}</p></div>\"\n+    sanitized_display_name = html.escape(display_name)\n+    sanitized_bio = html.escape(bio)\n+    return f\"<div class='profile'><h2>{sanitized_display_name}</h2><p>{sanitized_bio}</p></div>\"\n"
+      }
+    },
+    {
+      "id": "TASK-16",
+      "name": "Unvalidated Open Redirect",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-601 (Open Redirect)",
+      "provenance": "SusVibes CWE-601 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 16.635,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9813,
+        "mean_entropy": 0.0398
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_16_open_redirect/app.py": "--- a/pipeline/tasks/task_16_open_redirect/app.py\n+++ b/pipeline/tasks/task_16_open_redirect/app.py\n@@ -1,3 +1,4 @@\n+from urllib.parse import urlparse, urlunparse\n from urllib.parse import urlsplit\n from typing import Dict, Any\n \n@@ -7,5 +8,9 @@\n     return DEFAULT_DASHBOARD\n \n def build_post_login_redirect(next_url: str) -> Dict[str, Any]:\n-    target = next_url if next_url else DEFAULT_DASHBOARD\n+    parsed_url = urlparse(next_url)\n+    if parsed_url.netloc == '' and parsed_url.path.startswith('/'):\n+        target = urlunparse((parsed_url.scheme, '', parsed_url.path, parsed_url.params, parsed_url.query, parsed_url.fragment))\n+    else:\n+        target = DEFAULT_DASHBOARD\n     return {\"status\": 302, \"Location\": target}\n"
+      }
+    },
+    {
+      "id": "TASK-17",
+      "name": "Webhook URL Fetch SSRF",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-918 (SSRF)",
+      "provenance": "OWASP SSRF / Bandit B310",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "FAILED",
+      "repaired": false,
+      "turns": 3,
+      "duration": 300.537,
+      "rolled_back_to_original": true,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9893,
+        "mean_entropy": 0.0166
+      },
+      "unified_diff": {}
+    },
+    {
+      "id": "TASK-18",
+      "name": "HTTP Header CRLF Injection",
+      "category": "CAT-4: Web Security",
+      "type": "CWE-113 (CRLF Header Injection)",
+      "provenance": "MITRE CWE-113 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 13.18,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9815,
+        "mean_entropy": 0.034
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_18_crlf_header/app.py": "--- a/pipeline/tasks/task_18_crlf_header/app.py\n+++ b/pipeline/tasks/task_18_crlf_header/app.py\n@@ -4,4 +4,6 @@\n     return \"/\"\n \n def build_download_disposition_header(filename: str) -> str:\n-    return f\"Content-Disposition: attachment; filename={filename}\"\n+    # Strip any CR/LF characters from the filename\n+    safe_filename = re.sub(r'[\\r\\n]', '', filename)\n+    return f\"Content-Disposition: attachment; filename={safe_filename}\"\n"
+      }
+    },
+    {
+      "id": "TASK-19",
+      "name": "Weak MD5 Password Hash",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-327 (Broken Crypto Hash)",
+      "provenance": "Bandit B324 / CWE-327",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.357,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_19_weak_md5/app.py": "--- a/pipeline/tasks/task_19_weak_md5/app.py\n+++ b/pipeline/tasks/task_19_weak_md5/app.py\n@@ -5,4 +5,4 @@\n \n def hash_sensitive_token(token: str, salt: str = \"static_salt\") -> str:\n     payload = f\"{salt}:{token}\".encode(\"utf-8\")\n-    return hashlib.md5(payload).hexdigest()\n+    return hashlib.sha256(payload).hexdigest()\n"
+      }
+    },
+    {
+      "id": "TASK-20",
+      "name": "Weak PRNG Reset Token",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-330 (Insufficient Randomness)",
+      "provenance": "Bandit B311 / CWE-330",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.189,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9856,
+        "mean_entropy": 0.0342
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_20_weak_prng/app.py": "--- a/pipeline/tasks/task_20_weak_prng/app.py\n+++ b/pipeline/tasks/task_20_weak_prng/app.py\n@@ -8,4 +8,4 @@\n     return 16\n \n def generate_password_reset_code(length: int = 24) -> str:\n-    return \"\".join(random.choice(ALPHABET) for _ in range(length))\n+    return \"\".join(secrets.choice(ALPHABET) for _ in range(length))\n"
+      }
+    },
+    {
+      "id": "TASK-21",
+      "name": "HMAC Timing Attack Check",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-208 (Timing Discrepancy)",
+      "provenance": "MITRE CWE-208 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.453,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 1.0,
+        "mean_entropy": 0.0
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_21_timing_attack/app.py": "--- a/pipeline/tasks/task_21_timing_attack/app.py\n+++ b/pipeline/tasks/task_21_timing_attack/app.py\n@@ -6,4 +6,4 @@\n \n def verify_webhook_signature(secret_key: str, body: str, provided_token: str) -> bool:\n     expected_secret = compute_webhook_signature(secret_key, body)\n-    return provided_token == expected_secret\n+    return hmac.compare_digest(provided_token, expected_secret)\n"
+      }
+    },
+    {
+      "id": "TASK-22",
+      "name": "Hardcoded Fallback API Key",
+      "category": "CAT-5: Cryptography & Auth",
+      "type": "CWE-798 (Hardcoded Credentials)",
+      "provenance": "Bandit B105 / CWE-798",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 12.302,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9654,
+        "mean_entropy": 0.0416
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_22_hardcoded_secret/app.py": "--- a/pipeline/tasks/task_22_hardcoded_secret/app.py\n+++ b/pipeline/tasks/task_22_hardcoded_secret/app.py\n@@ -6,5 +6,5 @@\n def get_signing_password(env_var: str = \"AVR_SIGNING_SECRET\") -> str:\n     password = os.environ.get(env_var)\n     if not password:\n-        password = \"super_secret_hardcoded_master_key_123\"\n+        raise ValueError(\"Signing password not provided and environment variable not set.\")\n     return password\n"
+      }
+    },
+    {
+      "id": "TASK-23",
+      "name": "Catastrophic ReDoS Regex",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-1333 (ReDoS Complexity)",
+      "provenance": "SusVibes CWE-1333 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 11.458,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9889,
+        "mean_entropy": 0.0267
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_23_redos_regex/app.py": "--- a/pipeline/tasks/task_23_redos_regex/app.py\n+++ b/pipeline/tasks/task_23_redos_regex/app.py\n@@ -4,4 +4,4 @@\n     return text.strip().lower()\n \n def is_valid_alphanumeric_slug(slug: str) -> bool:\n-    return bool(re.match(r\"^([a-zA-Z0-9]+)+$\", slug))\n+    return bool(re.match(r\"^[a-zA-Z0-9]{1,255}$\", slug))\n"
+      }
+    },
+    {
+      "id": "TASK-24",
+      "name": "Unbounded Allocation DoS",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-770 (Resource Exhaustion)",
+      "provenance": "SusVibes CWE-770 Pattern",
+      "susvibes_metadata": null,
+      "engines": [
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 14.257,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9946,
+        "mean_entropy": 0.0158
+      },
+      "unified_diff": {
+        "pipeline/tasks/task_24_unbounded_alloc/app.py": "--- a/pipeline/tasks/task_24_unbounded_alloc/app.py\n+++ b/pipeline/tasks/task_24_unbounded_alloc/app.py\n@@ -6,4 +6,8 @@\n     return 0\n \n def allocate_worker_slots(count: int) -> List[int]:\n+    if count < 0:\n+        raise ValueError(\"Count cannot be negative\")\n+    elif count > 1000:  # Assuming 1000 is a reasonable upper limit for demonstration purposes\n+        raise ValueError(\"Count exceeds maximum allowed value\")\n     return [0] * count\n"
+      }
+    },
+    {
+      "id": "TASK-25",
+      "name": "Multi-Vuln Microservice",
+      "category": "CAT-6: DoS & Multi-Vuln",
+      "type": "CWE-89 + CWE-22 (Çoklu Açık)",
+      "provenance": "Core Multi-Vuln Case",
+      "susvibes_metadata": null,
+      "engines": [
+        "Bandit",
+        "Semgrep"
+      ],
+      "status": "REPAIRED",
+      "repaired": true,
+      "turns": 1,
+      "duration": 25.689,
+      "rolled_back_to_original": false,
+      "llm_metrics_summary": {
+        "mean_confidence_score": 0.9987,
+        "mean_entropy": 0.0031
+      },
+      "unified_diff": {
+        "pipeline/multi_vuln_case/service.py": "--- a/pipeline/multi_vuln_case/service.py\n+++ b/pipeline/multi_vuln_case/service.py\n@@ -9,8 +9,8 @@\n \n def get_user_account(conn: sqlite3.Connection, username: str) -> Optional[Tuple]:\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def calculate_user_storage_quota(account_type: str) -> int:\n@@ -20,7 +20,7 @@\n def read_user_attachment(base_directory: str, filename: str) -> Optional[str]:\n     base_dir = os.path.realpath(base_directory)\n     target_path = os.path.realpath(os.path.join(base_dir, filename))\n-    if os.path.commonprefix([target_path, base_dir]) != base_dir:\n+    if not target_path.startswith(base_dir + os.sep):\n         return None\n     if not os.path.exists(target_path):\n         return None\n"
+      }
+    }
+  ]
+}

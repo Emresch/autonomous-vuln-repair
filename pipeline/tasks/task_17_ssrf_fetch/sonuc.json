@@ -1,0 +1,245 @@
+{
+  "status": "FAILED",
+  "task_dir": "pipeline/tasks/task_17_ssrf_fetch",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.unvalidated-ssrf-request",
+      "cwe_id": "CWE-918",
+      "file_path": "pipeline/tasks/task_17_ssrf_fetch/app.py",
+      "line_number": 9,
+      "end_line_number": 9,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "9     with opener(url, timeout=3) as resp:",
+      "message": "Server-Side Request Forgery (SSRF) risk (CWE-918): Fetching a user-supplied URL without validating the scheme, hostname, and resolved IP address allows attackers to probe loopback interfaces (127.0.0.1, localhost), private RFC1918 networks, link-local cloud metadata services (169.254.169.254), or 'file://' URLs. Strictly allow only http/https schemes and block private, loopback, and link-local IP ranges.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_17_ssrf_fetch/app.py",
+      "test_id": "pipeline.sast.unvalidated-ssrf-request",
+      "cwe": "CWE-918",
+      "issue_text": "Server-Side Request Forgery (SSRF) risk (CWE-918): Fetching a user-supplied URL without validating the scheme, hostname, and resolved IP address allows attackers to probe loopback interfaces (127.0.0.1, localhost), private RFC1918 networks, link-local cloud metadata services (169.254.169.254), or 'file://' URLs. Strictly allow only http/https schemes and block private, loopback, and link-local IP ranges.",
+      "code": "9     with opener(url, timeout=3) as resp:"
+    }
+  ],
+  "repaired": false,
+  "turns_used": 3,
+  "total_duration_seconds": 300.534,
+  "rolled_back_to_original": true,
+  "final_patches": {},
+  "unified_diff": {},
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9893,
+    "mean_entropy": 0.0166
+  },
+  "failure_summary": {
+    "reason": "MAX_TURNS_EXHAUSTED",
+    "turns_attempted": 3,
+    "last_stage_failed": "DOCKER_VERIFICATION_FAILED",
+    "last_error_feedback": "Security Exploit Not Blocked (sec_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001E3186114E0>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n>           return response.read().decode(\"utf-8\")\n                   ^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'read'\n\napp.py:28: AttributeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - AttributeErro...\n1 failed in 0.16s",
+    "rolled_back_to_original": true
+  },
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 16.889,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_17_ssrf_fetch/app.py::validate_and_open_webhook",
+          "function_name": "validate_and_open_webhook",
+          "file": "pipeline/tasks/task_17_ssrf_fetch/app.py",
+          "patch_code": "import ipaddress\nimport urllib.parse\nimport urllib.request\n\ndef validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n    parsed_url = urllib.parse.urlparse(url)\n    if not parsed_url.scheme or not parsed_url.netloc:\n        raise ValueError(\"Invalid URL format\")\n\n    allowed_schemes = {'http', 'https'}\n    if parsed_url.scheme not in allowed_schemes:\n        raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n\n    try:\n        ip_address = ipaddress.ip_address(parsed_url.hostname)\n        if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n            raise ValueError(f\"Prohibited IP address: {ip_address}\")\n    except ValueError:\n        # If not an IP address, assume it's a domain and proceed\n        pass\n\n    with opener(url, timeout=3) as resp:\n        return resp.read().decode(\"utf-8\")",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 15.925,
+            "token_count": 198,
+            "confidence_score": 0.9796,
+            "entropy": 0.0338,
+            "attention_summary": {
+              "focused_token": "scheme",
+              "peak_weight": 0.0048,
+              "attention_entropy": 4.182,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "scheme",
+                  "token_index": 183,
+                  "weight": 0.0048
+                },
+                {
+                  "token": "_open",
+                  "token_index": 306,
+                  "weight": 0.0033
+                },
+                {
+                  "token": "address",
+                  "token_index": 280,
+                  "weight": 0.0031
+                },
+                {
+                  "token": "_and",
+                  "token_index": 305,
+                  "weight": 0.0031
+                },
+                {
+                  "token": "URL",
+                  "token_index": 179,
+                  "weight": 0.003
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": false,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "sec_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x00000284E9781580>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n>       with opener(url, timeout=3) as resp:\nE       TypeError: 'NoneType' object does not support the context manager protocol\n\napp.py:25: TypeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - TypeError: 'N...\n1 failed in 0.15s",
+      "error_feedback": "Security Exploit Not Blocked (sec_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x00000284E9781580>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n>       with opener(url, timeout=3) as resp:\nE       TypeError: 'NoneType' object does not support the context manager protocol\n\napp.py:25: TypeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - TypeError: 'N...\n1 failed in 0.15s"
+    },
+    {
+      "turn": 2,
+      "duration_seconds": 38.351,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_17_ssrf_fetch/app.py::validate_and_open_webhook",
+          "function_name": "validate_and_open_webhook",
+          "file": "pipeline/tasks/task_17_ssrf_fetch/app.py",
+          "patch_code": "import ipaddress\nimport urllib.parse\nimport urllib.request\n\ndef validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n    parsed_url = urllib.parse.urlparse(url)\n    if not parsed_url.scheme or not parsed_url.netloc:\n        raise ValueError(\"Invalid URL format\")\n\n    allowed_schemes = {'http', 'https'}\n    if parsed_url.scheme not in allowed_schemes:\n        raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n\n    try:\n        ip_address = ipaddress.ip_address(parsed_url.hostname)\n        if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n            raise ValueError(f\"Prohibited IP address: {ip_address}\")\n    except ValueError:\n        # If not an IP address, assume it's a domain and proceed\n        pass\n\n    response = opener(url, timeout=3)\n    try:\n        return response.read().decode(\"utf-8\")\n    finally:\n        response.close()",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 36.861,
+            "token_count": 284,
+            "confidence_score": 0.9537,
+            "entropy": 0.0734,
+            "attention_summary": {
+              "focused_token": "def",
+              "peak_weight": 0.0026,
+              "attention_entropy": 5.7175,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "def",
+                  "token_index": 473,
+                  "weight": 0.0026
+                },
+                {
+                  "token": "opener",
+                  "token_index": 820,
+                  "weight": 0.0023
+                },
+                {
+                  "token": ".scheme",
+                  "token_index": 508,
+                  "weight": 0.0022
+                },
+                {
+                  "token": "if",
+                  "token_index": 504,
+                  "weight": 0.002
+                },
+                {
+                  "token": ".hostname",
+                  "token_index": 573,
+                  "weight": 0.002
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": false,
+      "sec_pass": false,
+      "func_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n______________________ test_allowed_public_https_webhook ______________________\n\n    def test_allowed_public_https_webhook():\n>       res = validate_and_open_webhook(\"https://93.184.216.34/hook\", opener=lambda u, timeout=3: DummyResp(\"OK\"))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nfunc_test.py:15: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'https://93.184.216.34/hook'\nopener = <function test_allowed_public_https_webhook.<locals>.<lambda> at 0x0000026564E5E5C0>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n            return response.read().decode(\"utf-8\")\n        finally:\n>           response.close()\n            ^^^^^^^^^^^^^^\nE           AttributeError: 'DummyResp' object has no attribute 'close'\n\napp.py:29: AttributeError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_allowed_public_https_webhook - AttributeError: 'Dum...\n1 failed in 0.15s",
+      "sec_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001B8F9A81580>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n>           return response.read().decode(\"utf-8\")\n                   ^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'read'\n\napp.py:27: AttributeError\n\nDuring handling of the above exception, another exception occurred:\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001B8F9A81580>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n            return response.read().decode(\"utf-8\")\n        finally:\n>           response.close()\n            ^^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'close'\n\napp.py:29: AttributeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - AttributeErro...\n1 failed in 0.17s",
+      "error_feedback": "Functional Regression Failure (func_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n______________________ test_allowed_public_https_webhook ______________________\n\n    def test_allowed_public_https_webhook():\n>       res = validate_and_open_webhook(\"https://93.184.216.34/hook\", opener=lambda u, timeout=3: DummyResp(\"OK\"))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nfunc_test.py:15: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'https://93.184.216.34/hook'\nopener = <function test_allowed_public_https_webhook.<locals>.<lambda> at 0x0000026564E5E5C0>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n            return response.read().decode(\"utf-8\")\n        finally:\n>           response.close()\n            ^^^^^^^^^^^^^^\nE           AttributeError: 'DummyResp' object has no attribute 'close'\n\napp.py:29: AttributeError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_allowed_public_https_webhook - AttributeError: 'Dum...\n1 failed in 0.15s\n\nSecurity Exploit Not Blocked (sec_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001B8F9A81580>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n>           return response.read().decode(\"utf-8\")\n                   ^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'read'\n\napp.py:27: AttributeError\n\nDuring handling of the above exception, another exception occurred:\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001B8F9A81580>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n            return response.read().decode(\"utf-8\")\n        finally:\n>           response.close()\n            ^^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'close'\n\napp.py:29: AttributeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - AttributeErro...\n1 failed in 0.17s"
+    },
+    {
+      "turn": 3,
+      "duration_seconds": 239.555,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_17_ssrf_fetch/app.py::validate_and_open_webhook",
+          "function_name": "validate_and_open_webhook",
+          "file": "pipeline/tasks/task_17_ssrf_fetch/app.py",
+          "patch_code": "import ipaddress\nimport urllib.parse\nfrom unittest.mock import MagicMock\n\ndef validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n    parsed_url = urllib.parse.urlparse(url)\n    if not parsed_url.scheme or not parsed_url.netloc:\n        raise ValueError(\"Invalid URL format\")\n\n    allowed_schemes = {'http', 'https'}\n    if parsed_url.scheme not in allowed_schemes:\n        raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n\n    try:\n        ip_address = ipaddress.ip_address(parsed_url.hostname)\n        if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n            raise ValueError(f\"Prohibited IP address: {ip_address}\")\n    except ValueError:\n        # If not an IP address, assume it's a domain and proceed\n        pass\n\n    response = opener(url, timeout=3)\n    try:\n        return response.read().decode(\"utf-8\")\n    finally:\n        if hasattr(response, 'close'):\n            response.close()",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 235.682,
+            "token_count": 216,
+            "confidence_score": 0.9893,
+            "entropy": 0.0166,
+            "attention_summary": {
+              "focused_token": ".scheme",
+              "peak_weight": 0.0017,
+              "attention_entropy": 6.2047,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": ".scheme",
+                  "token_index": 508,
+                  "weight": 0.0017
+                },
+                {
+                  "token": ".hostname",
+                  "token_index": 573,
+                  "weight": 0.0016
+                },
+                {
+                  "token": "if",
+                  "token_index": 504,
+                  "weight": 0.0016
+                },
+                {
+                  "token": "except",
+                  "token_index": 609,
+                  "weight": 0.0015
+                },
+                {
+                  "token": "if",
+                  "token_index": 576,
+                  "weight": 0.0014
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": false,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "sec_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001E3186114E0>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n>           return response.read().decode(\"utf-8\")\n                   ^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'read'\n\napp.py:28: AttributeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - AttributeErro...\n1 failed in 0.16s",
+      "error_feedback": "Security Exploit Not Blocked (sec_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________ test_ssrf_internal_and_file_urls_rejected __________________\n\n    def test_ssrf_internal_and_file_urls_rejected():\n        forbidden_urls = [\n            \"http://127.0.0.1:8000/admin\",\n            \"http://localhost/secret\",\n            \"http://169.254.169.254/latest/meta-data/\",\n            \"file:///etc/passwd\",\n        ]\n        for bad_url in forbidden_urls:\n            with pytest.raises((ValueError, PermissionError)):\n>               validate_and_open_webhook(bad_url, opener=lambda u, timeout=3: None)\n\nsec_test.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nurl = 'http://127.0.0.1:8000/admin'\nopener = <function test_ssrf_internal_and_file_urls_rejected.<locals>.<lambda> at 0x000001E3186114E0>\n\n    def validate_and_open_webhook(url: str, opener=urllib.request.urlopen) -> str:\n        parsed_url = urllib.parse.urlparse(url)\n        if not parsed_url.scheme or not parsed_url.netloc:\n            raise ValueError(\"Invalid URL format\")\n    \n        allowed_schemes = {'http', 'https'}\n        if parsed_url.scheme not in allowed_schemes:\n            raise ValueError(f\"Unsupported URL scheme: {parsed_url.scheme}\")\n    \n        try:\n            ip_address = ipaddress.ip_address(parsed_url.hostname)\n            if ip_address.is_private or ip_address.is_loopback or ip_address.is_link_local:\n                raise ValueError(f\"Prohibited IP address: {ip_address}\")\n        except ValueError:\n            # If not an IP address, assume it's a domain and proceed\n            pass\n    \n        response = opener(url, timeout=3)\n        try:\n>           return response.read().decode(\"utf-8\")\n                   ^^^^^^^^^^^^^\nE           AttributeError: 'NoneType' object has no attribute 'read'\n\napp.py:28: AttributeError\n=========================== short test summary info ===========================\nFAILED sec_test.py::test_ssrf_internal_and_file_urls_rejected - AttributeErro...\n1 failed in 0.16s"
+    }
+  ]
+}

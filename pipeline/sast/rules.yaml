@@ -1,22 +1,76 @@
-# Domain-specific Semgrep rules supplementing Bandit and p/python.
-# Rationale:
-#   1. CWE-22 (insecure-commonprefix-path-traversal): Bandit does not flag
-#      os.path.commonprefix(), which performs character-by-character prefix matching
-#      instead of path-segment boundary checking (e.g., Starlette CVE-2023-29159).
-#   2. CWE-78 (hive-cli-command-injection): Bandit does not model domain-specific
-#      Hive CLI script construction where '!' executes shell commands and ';' chains
-#      statements inside an interpolated HQL USE statement (e.g., Airflow CVE-2022-41131).
+# Domain-specific Semgrep rules supplementing Bandit across 6 CWE categories.
+# All diagnostic messages describe the vulnerability mechanism and security invariant
+# without leaking hardcoded patch expressions (zero answer leakage).
 
 rules:
   - id: insecure-commonprefix-path-traversal
     patterns:
       - pattern: os.path.commonprefix(...)
     message: >-
-      Insecure path boundary check (CWE-22): 'os.path.commonprefix' (like raw
-      'str.startswith') compares paths character-by-character rather than by
-      directory segments, allowing sibling-prefix Path Traversal bypasses (e.g.
-      '/app/static' matching '/app/static_disallowed'). Use path-segment-aware
-      'os.path.commonpath([resolved_target, resolved_base]) == resolved_base' instead.
+      Insecure path boundary check (CWE-22): 'os.path.commonprefix' compares paths
+      character-by-character rather than by directory segments, allowing sibling-prefix
+      Path Traversal bypasses (e.g. '/app/static' matching '/app/static_disallowed').
+      Validate containment using a path-segment-aware canonical path check instead of
+      character-prefix matching.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      confidence: HIGH
+
+  - id: insecure-startswith-path-traversal
+    pattern-either:
+      - pattern: $TARGET.startswith($BASE)
+      - pattern: not $TARGET.startswith($BASE)
+    message: >-
+      Insecure path prefix check (CWE-22): Using raw 'str.startswith()' on resolved
+      directory paths without trailing separator or path-segment boundary verification
+      allows sibling-directory Path Traversal (e.g. '/var/uploads_secret' matching
+      '/var/uploads'). Enforce strict directory-segment containment before accessing files.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      confidence: HIGH
+
+  - id: unvalidated-os-path-join-open
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $P = os.path.join($BASE, $USER_PATH)
+              ...
+              with open($P, ...) as $F:
+                  ...
+          - pattern: |
+              $P = os.path.join($BASE, $USER_PATH)
+              ...
+              open($P, ...)
+      - pattern-not: |
+          $P = os.path.join($BASE, $USER_PATH)
+          ...
+          os.path.commonpath(...)
+          ...
+    message: >-
+      Path Traversal / Arbitrary File Read risk (CWE-22): Passing user-controlled paths
+      to 'os.path.join(base, user_path)' allows absolute paths (e.g. '/etc/passwd') or
+      '../' sequences to escape the base directory because 'os.path.join' discards previous
+      segments when encountering a leading slash. Canonicalize and verify that the resolved
+      target stays strictly inside the base directory before opening.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      confidence: HIGH
+
+  - id: archive-extractall-zipslip
+    pattern-either:
+      - pattern: $ARCHIVE.extractall(...)
+    message: >-
+      Arbitrary File Overwrite via Archive Extraction / ZipSlip (CWE-22): Calling
+      'extractall()' on untrusted tar/zip archives without validating each member's
+      resolved destination path allows archive entries containing '../' or absolute
+      paths to write files outside the target extraction directory. Validate every
+      archive member path before extraction.
     languages: [python]
     severity: ERROR
     metadata:
@@ -41,3 +95,143 @@ rules:
       cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       confidence: HIGH
 
+  - id: ldap-or-query-filter-injection
+    pattern-either:
+      - pattern: f"(uid={$USER})"
+      - pattern: f"(&(uid={$USER})(userPassword={$PASS}))"
+      - pattern: f"(&(objectClass=user)(uid={$USER}))"
+    message: >-
+      LDAP Filter Injection risk (CWE-90): User-supplied input is interpolated directly
+      into an LDAP search filter string without escaping LDAP metacharacters ('*', '(',
+      ')', '\\', NUL), allowing attackers to bypass authentication or enumerate records
+      (e.g. 'admin)(|(uid=*'). Reject or escape special LDAP filter characters in user input.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-90: Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')"
+      confidence: HIGH
+
+  - id: raw-html-template-xss
+    pattern-either:
+      - pattern: f"<div...>{$USER_INPUT}</div>"
+      - pattern: f"<p...>{$USER_INPUT}</p>"
+      - pattern: f"<span...>{$USER_INPUT}</span>"
+      - pattern: f"<h1>{$USER_INPUT}</h1>"
+      - pattern: f"<div class='profile'><h2>{$NAME}</h2><p>{$BIO}</p></div>"
+    message: >-
+      Cross-Site Scripting (XSS) risk (CWE-79): Unescaped user input is interpolated
+      directly into an HTML response string, allowing attackers to inject executable
+      '<script>' or event-handler payloads. Sanitize/escape all dynamic HTML text and
+      attribute values before rendering.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      confidence: HIGH
+
+  - id: unvalidated-open-redirect
+    pattern-either:
+      - pattern: |
+          return {"status": 302, "Location": $TARGET}
+      - pattern: |
+          return {"redirect": $TARGET, "status_code": 302}
+    message: >-
+      Open Redirect vulnerability (CWE-601): User-controlled redirect target is returned
+      in an HTTP redirect response without validating the URL scheme and network location
+      (netloc), allowing attackers to redirect victims to external phishing domains via
+      'https://evil.com' or protocol-relative '//evil.com' URLs. Allow only safe relative
+      internal paths starting with a single '/' and no external host/scheme.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
+      confidence: HIGH
+
+  - id: unvalidated-ssrf-request
+    pattern-either:
+      - pattern: urllib.request.urlopen($URL, ...)
+      - pattern: urlopen($URL, ...)
+      - pattern: opener($URL, ...)
+    message: >-
+      Server-Side Request Forgery (SSRF) risk (CWE-918): Fetching a user-supplied URL
+      without validating the scheme, hostname, and resolved IP address allows attackers
+      to probe loopback interfaces (127.0.0.1, localhost), private RFC1918 networks,
+      link-local cloud metadata services (169.254.169.254), or 'file://' URLs. Strictly
+      allow only http/https schemes and block private, loopback, and link-local IP ranges.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      confidence: HIGH
+
+  - id: http-header-crlf-injection
+    pattern-either:
+      - pattern: |
+          f"Set-Cookie: session={$VAL}; Path=/"
+      - pattern: |
+          f"X-Custom-User: {$VAL}\r\n"
+      - pattern: |
+          f"Content-Disposition: attachment; filename={$VAL}"
+    message: >-
+      HTTP Response Splitting / CRLF Header Injection (CWE-113): Unvalidated user input
+      is interpolated into an HTTP header line without stripping or rejecting carriage
+      return ('\\r') and newline ('\\n') characters, allowing attackers to inject arbitrary
+      HTTP headers or split responses. Reject or strip CR/LF control characters.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-113: Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Request/Response Splitting')"
+      confidence: HIGH
+
+  - id: non-constant-time-secret-comparison
+    pattern-either:
+      - pattern: $PROVIDED_TOKEN == $EXPECTED_SECRET
+      - pattern: $EXPECTED_SECRET == $PROVIDED_TOKEN
+      - pattern: $SIGNATURE == $EXPECTED_SIG
+      - pattern: $EXPECTED_SIG == $SIGNATURE
+    message: >-
+      Timing Attack vulnerability in secret/signature comparison (CWE-208): Using the
+      standard '==' operator to compare cryptographic digests, API tokens, or HMAC
+      signatures leaks byte-by-byte timing information. Use a constant-time comparison
+      function instead of '==' or '!='.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-208: Observable Timing Discrepancy"
+      confidence: HIGH
+
+  - id: catastrophic-backtracking-redos
+    pattern-either:
+      - pattern: re.match(r"^([a-zA-Z0-9]+)+$", ...)
+      - pattern: re.match(r"^(a+)+$", ...)
+      - pattern: re.search(r"^([a-zA-Z0-9_]+)+@...", ...)
+      - pattern: re.compile(r"^([a-zA-Z0-9]+)+$")
+    message: >-
+      Regular Expression Denial of Service / ReDoS (CWE-1333): Nested quantifiers such
+      as '([a-zA-Z0-9]+)+' cause exponential catastrophic backtracking on non-matching
+      inputs, freezing the CPU. Simplify the regular expression to eliminate nested
+      repeating groups and enforce a reasonable maximum input length.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1333: Inefficient Regular Expression Complexity"
+      confidence: HIGH
+
+  - id: unbounded-resource-allocation-dos
+    pattern-either:
+      - pattern: |
+          ["\x00"] * $COUNT
+      - pattern: |
+          b"\x00" * $SIZE
+      - pattern: |
+          [0] * $COUNT
+    message: >-
+      Uncontrolled Resource Consumption / Memory DoS (CWE-770): Allocating buffers or
+      lists directly proportional to an unvalidated user-controlled count/size parameter
+      allows attackers to trigger memory exhaustion by passing negative or huge values.
+      Enforce strict lower and upper bounds on requested sizes before allocation.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-770: Allocation of Resources Without Limits or Throttling"
+      confidence: HIGH

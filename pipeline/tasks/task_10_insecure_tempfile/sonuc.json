@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_10_insecure_tempfile",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B306",
+      "cwe_id": "CWE-377",
+      "file_path": "pipeline/tasks/task_10_insecure_tempfile/app.py",
+      "line_number": 8,
+      "end_line_number": 8,
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "code_snippet": "7 def write_temporary_report(content: str) -> str:\n8     tmp_path = tempfile.mktemp(prefix=\"avr_report_\", suffix=\".txt\")\n9     with open(tmp_path, \"w\", encoding=\"utf-8\") as f:",
+      "message": "Use of insecure and deprecated function (mktemp).",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_10_insecure_tempfile/app.py",
+      "test_id": "B306",
+      "cwe": "CWE-377",
+      "issue_text": "Use of insecure and deprecated function (mktemp).",
+      "code": "7 def write_temporary_report(content: str) -> str:\n8     tmp_path = tempfile.mktemp(prefix=\"avr_report_\", suffix=\".txt\")\n9     with open(tmp_path, \"w\", encoding=\"utf-8\") as f:"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 12.04,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_10_insecure_tempfile/app.py::write_temporary_report": "import os\nimport tempfile\n\ndef write_temporary_report(content: str) -> str:\n    with tempfile.NamedTemporaryFile(mode=\"w\", prefix=\"avr_report_\", suffix=\".txt\", delete=False) as f:\n        tmp_path = f.name\n        f.write(content)\n    return tmp_path"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_10_insecure_tempfile/app.py": "--- a/pipeline/tasks/task_10_insecure_tempfile/app.py\n+++ b/pipeline/tasks/task_10_insecure_tempfile/app.py\n@@ -5,7 +5,7 @@\n     return title.strip().title()\n \n def write_temporary_report(content: str) -> str:\n-    tmp_path = tempfile.mktemp(prefix=\"avr_report_\", suffix=\".txt\")\n-    with open(tmp_path, \"w\", encoding=\"utf-8\") as f:\n+    with tempfile.NamedTemporaryFile(mode=\"w\", prefix=\"avr_report_\", suffix=\".txt\", delete=False) as f:\n+        tmp_path = f.name\n         f.write(content)\n     return tmp_path\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9919,
+    "mean_entropy": 0.0139
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 6.341,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_10_insecure_tempfile/app.py::write_temporary_report",
+          "function_name": "write_temporary_report",
+          "file": "pipeline/tasks/task_10_insecure_tempfile/app.py",
+          "patch_code": "import os\nimport tempfile\n\ndef write_temporary_report(content: str) -> str:\n    with tempfile.NamedTemporaryFile(mode=\"w\", prefix=\"avr_report_\", suffix=\".txt\", delete=False) as f:\n        tmp_path = f.name\n        f.write(content)\n    return tmp_path",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.573,
+            "token_count": 65,
+            "confidence_score": 0.9919,
+            "entropy": 0.0139,
+            "attention_summary": {
+              "focused_token": "os",
+              "peak_weight": 0.0062,
+              "attention_entropy": 4.2316,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "os",
+                  "token_index": 171,
+                  "weight": 0.0062
+                },
+                {
+                  "token": "avr",
+                  "token_index": 219,
+                  "weight": 0.0062
+                },
+                {
+                  "token": "_report",
+                  "token_index": 193,
+                  "weight": 0.005
+                },
+                {
+                  "token": "def",
+                  "token_index": 198,
+                  "weight": 0.0047
+                },
+                {
+                  "token": "encoding",
+                  "token_index": 235,
+                  "weight": 0.0045
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

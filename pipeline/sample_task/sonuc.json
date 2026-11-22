@@ -1,14 +1,14 @@
 {
   "status": "REPAIRED",
   "task_dir": "pipeline/sample_task",
-  "backend": "ollama",
-  "model_name": "qwen2.5-coder:7b",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
   "environment": {
-    "os": "Darwin",
-    "os_release": "24.6.0",
-    "arch": "arm64",
-    "python_version": "3.13.5",
-    "hardware_hint": "Apple Silicon (arm64)"
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
   },
   "total_findings": 1,
   "findings": [
@@ -33,7 +33,7 @@
   ],
   "repaired": true,
   "turns_used": 1,
-  "total_duration_seconds": 9.114,
+  "total_duration_seconds": 39.488,
   "rolled_back_to_original": false,
   "final_patches": {
     "pipeline/sample_task/app.py::get_user_by_username": "def get_user_by_username(conn, username: str):\n    cursor = conn.cursor()\n    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n    cursor.execute(query, (username,))\n    return cursor.fetchone()"
@@ -42,14 +42,14 @@
     "pipeline/sample_task/app.py": "--- a/pipeline/sample_task/app.py\n+++ b/pipeline/sample_task/app.py\n@@ -21,8 +21,8 @@\n \n def get_user_by_username(conn, username: str):\n     cursor = conn.cursor()\n-    query = f\"SELECT id, username, email FROM users WHERE username = '{username}'\"\n-    cursor.execute(query)\n+    query = \"SELECT id, username, email FROM users WHERE username = ?\"\n+    cursor.execute(query, (username,))\n     return cursor.fetchone()\n \n def count_total_users(conn) -> int:\n"
   },
   "llm_metrics_summary": {
-    "mean_confidence_score": null,
-    "mean_entropy": null
+    "mean_confidence_score": 1.0,
+    "mean_entropy": 0.0
   },
   "failure_summary": null,
   "turn_history": [
     {
       "turn": 1,
-      "duration_seconds": 5.482,
+      "duration_seconds": 32.042,
       "stage_failed": null,
       "execution_mode": "parallel",
       "patches": [
@@ -61,20 +61,54 @@
           "syntax_valid": true,
           "syntax_error": null,
           "llm_metrics": {
-            "backend": "ollama",
-            "model_name": "qwen2.5-coder:7b",
-            "duration_seconds": 4.479,
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.249,
             "token_count": 52,
-            "confidence_score": null,
-            "entropy": null,
-            "attention_summary": null
+            "confidence_score": 1.0,
+            "entropy": 0.0,
+            "attention_summary": {
+              "focused_token": "(conn",
+              "peak_weight": 0.0068,
+              "attention_entropy": 4.2159,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "(conn",
+                  "token_index": 197,
+                  "weight": 0.0068
+                },
+                {
+                  "token": "def",
+                  "token_index": 192,
+                  "weight": 0.0055
+                },
+                {
+                  "token": ".fetchone",
+                  "token_index": 237,
+                  "weight": 0.0054
+                },
+                {
+                  "token": "email",
+                  "token_index": 219,
+                  "weight": 0.0054
+                },
+                {
+                  "token": "username",
+                  "token_index": 199,
+                  "weight": 0.0053
+                }
+              ]
+            }
           }
         }
       ],
       "func_pass": true,
       "sec_pass": true,
-      "func_output": "...                                                                      [100%]\n3 passed in 0.02s",
-      "sec_output": ".                                                                        [100%]\n1 passed in 0.01s",
+      "func_output": "...                                                                      [100%]\n3 passed in 0.05s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
       "error_feedback": null
     }
   ]

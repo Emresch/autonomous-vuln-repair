@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_02_sqli_search",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B608",
+      "cwe_id": "CWE-89",
+      "file_path": "pipeline/tasks/task_02_sqli_search/app.py",
+      "line_number": 19,
+      "end_line_number": 19,
+      "severity": "MEDIUM",
+      "confidence": "LOW",
+      "code_snippet": "18     cursor = conn.cursor()\n19     sql = f\"SELECT id, name, price FROM products WHERE category = '{category}' AND price <= {max_price}\"\n20     cursor.execute(sql)",
+      "message": "Possible SQL injection vector through string-based query construction.",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_02_sqli_search/app.py",
+      "test_id": "B608",
+      "cwe": "CWE-89",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "code": "18     cursor = conn.cursor()\n19     sql = f\"SELECT id, name, price FROM products WHERE category = '{category}' AND price <= {max_price}\"\n20     cursor.execute(sql)"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 14.612,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_02_sqli_search/app.py::search_products_by_category": "def search_products_by_category(conn: sqlite3.Connection, category: str, max_price: float) -> List[Tuple]:\n    cursor = conn.cursor()\n    sql = \"SELECT id, name, price FROM products WHERE category = ? AND price <= ?\"\n    cursor.execute(sql, (category, max_price))\n    return cursor.fetchall()"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_02_sqli_search/app.py": "--- a/pipeline/tasks/task_02_sqli_search/app.py\n+++ b/pipeline/tasks/task_02_sqli_search/app.py\n@@ -16,6 +16,6 @@\n \n def search_products_by_category(conn: sqlite3.Connection, category: str, max_price: float) -> List[Tuple]:\n     cursor = conn.cursor()\n-    sql = f\"SELECT id, name, price FROM products WHERE category = '{category}' AND price <= {max_price}\"\n-    cursor.execute(sql)\n+    sql = \"SELECT id, name, price FROM products WHERE category = ? AND price <= ?\"\n+    cursor.execute(sql, (category, max_price))\n     return cursor.fetchall()\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9913,
+    "mean_entropy": 0.009
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 8.419,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_02_sqli_search/app.py::search_products_by_category",
+          "function_name": "search_products_by_category",
+          "file": "pipeline/tasks/task_02_sqli_search/app.py",
+          "patch_code": "def search_products_by_category(conn: sqlite3.Connection, category: str, max_price: float) -> List[Tuple]:\n    cursor = conn.cursor()\n    sql = \"SELECT id, name, price FROM products WHERE category = ? AND price <= ?\"\n    cursor.execute(sql, (category, max_price))\n    return cursor.fetchall()",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 7.577,
+            "token_count": 73,
+            "confidence_score": 0.9913,
+            "entropy": 0.009,
+            "attention_summary": {
+              "focused_token": "def",
+              "peak_weight": 0.0049,
+              "attention_entropy": 4.3068,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "def",
+                  "token_index": 202,
+                  "weight": 0.0049
+                },
+                {
+                  "token": "(conn",
+                  "token_index": 207,
+                  "weight": 0.0049
+                },
+                {
+                  "token": "SELECT",
+                  "token_index": 238,
+                  "weight": 0.0049
+                },
+                {
+                  "token": "WHERE",
+                  "token_index": 246,
+                  "weight": 0.0042
+                },
+                {
+                  "token": "_price",
+                  "token_index": 218,
+                  "weight": 0.0039
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": "..                                                                       [100%]\n2 passed in 0.05s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "error_feedback": null
+    }
+  ]
+}

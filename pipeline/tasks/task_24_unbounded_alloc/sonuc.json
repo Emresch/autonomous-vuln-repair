@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_24_unbounded_alloc",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.unbounded-resource-allocation-dos",
+      "cwe_id": "CWE-770",
+      "file_path": "pipeline/tasks/task_24_unbounded_alloc/app.py",
+      "line_number": 9,
+      "end_line_number": 9,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "9     return [0] * count",
+      "message": "Uncontrolled Resource Consumption / Memory DoS (CWE-770): Allocating buffers or lists directly proportional to an unvalidated user-controlled count/size parameter allows attackers to trigger memory exhaustion by passing negative or huge values. Enforce strict lower and upper bounds on requested sizes before allocation.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_24_unbounded_alloc/app.py",
+      "test_id": "pipeline.sast.unbounded-resource-allocation-dos",
+      "cwe": "CWE-770",
+      "issue_text": "Uncontrolled Resource Consumption / Memory DoS (CWE-770): Allocating buffers or lists directly proportional to an unvalidated user-controlled count/size parameter allows attackers to trigger memory exhaustion by passing negative or huge values. Enforce strict lower and upper bounds on requested sizes before allocation.",
+      "code": "9     return [0] * count"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 14.256,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_24_unbounded_alloc/app.py::allocate_worker_slots": "def allocate_worker_slots(count: int) -> List[int]:\n    if count < 0:\n        raise ValueError(\"Count cannot be negative\")\n    elif count > 1000:  # Assuming 1000 is a reasonable upper limit for demonstration purposes\n        raise ValueError(\"Count exceeds maximum allowed value\")\n    return [0] * count"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_24_unbounded_alloc/app.py": "--- a/pipeline/tasks/task_24_unbounded_alloc/app.py\n+++ b/pipeline/tasks/task_24_unbounded_alloc/app.py\n@@ -6,4 +6,8 @@\n     return 0\n \n def allocate_worker_slots(count: int) -> List[int]:\n+    if count < 0:\n+        raise ValueError(\"Count cannot be negative\")\n+    elif count > 1000:  # Assuming 1000 is a reasonable upper limit for demonstration purposes\n+        raise ValueError(\"Count exceeds maximum allowed value\")\n     return [0] * count\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9946,
+    "mean_entropy": 0.0158
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 8.58,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_24_unbounded_alloc/app.py::allocate_worker_slots",
+          "function_name": "allocate_worker_slots",
+          "file": "pipeline/tasks/task_24_unbounded_alloc/app.py",
+          "patch_code": "def allocate_worker_slots(count: int) -> List[int]:\n    if count < 0:\n        raise ValueError(\"Count cannot be negative\")\n    elif count > 1000:  # Assuming 1000 is a reasonable upper limit for demonstration purposes\n        raise ValueError(\"Count exceeds maximum allowed value\")\n    return [0] * count",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 7.775,
+            "token_count": 78,
+            "confidence_score": 0.9946,
+            "entropy": 0.0158,
+            "attention_summary": {
+              "focused_token": "_worker",
+              "peak_weight": 0.0082,
+              "attention_entropy": 4.3021,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "_worker",
+                  "token_index": 244,
+                  "weight": 0.0082
+                },
+                {
+                  "token": "_slots",
+                  "token_index": 245,
+                  "weight": 0.0081
+                },
+                {
+                  "token": "allocate",
+                  "token_index": 243,
+                  "weight": 0.0057
+                },
+                {
+                  "token": "_slots",
+                  "token_index": 253,
+                  "weight": 0.0052
+                },
+                {
+                  "token": "def",
+                  "token_index": 250,
+                  "weight": 0.0045
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

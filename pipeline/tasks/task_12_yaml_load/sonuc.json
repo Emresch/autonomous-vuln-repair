@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_12_yaml_load",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B506",
+      "cwe_id": "CWE-20",
+      "file_path": "pipeline/tasks/task_12_yaml_load/app.py",
+      "line_number": 8,
+      "end_line_number": 8,
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "code_snippet": "7 def load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n8     data = yaml.load(yaml_text, Loader=yaml.Loader)\n9     if not isinstance(data, dict):",
+      "message": "Use of unsafe yaml load. Allows instantiation of arbitrary objects. Consider yaml.safe_load().",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_12_yaml_load/app.py",
+      "test_id": "B506",
+      "cwe": "CWE-20",
+      "issue_text": "Use of unsafe yaml load. Allows instantiation of arbitrary objects. Consider yaml.safe_load().",
+      "code": "7 def load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n8     data = yaml.load(yaml_text, Loader=yaml.Loader)\n9     if not isinstance(data, dict):"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 12.441,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_12_yaml_load/app.py::load_service_yaml_config": "import yaml\nfrom typing import Any, Dict\n\ndef load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n    data = yaml.safe_load(yaml_text)\n    if not isinstance(data, dict):\n        raise ValueError(\"Configuration root must be a mapping\")\n    return data"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_12_yaml_load/app.py": "--- a/pipeline/tasks/task_12_yaml_load/app.py\n+++ b/pipeline/tasks/task_12_yaml_load/app.py\n@@ -5,7 +5,7 @@\n     return \"v1.0\"\n \n def load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n-    data = yaml.load(yaml_text, Loader=yaml.Loader)\n+    data = yaml.safe_load(yaml_text)\n     if not isinstance(data, dict):\n         raise ValueError(\"Configuration root must be a mapping\")\n     return data\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9976,
+    "mean_entropy": 0.0066
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 6.753,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_12_yaml_load/app.py::load_service_yaml_config",
+          "function_name": "load_service_yaml_config",
+          "file": "pipeline/tasks/task_12_yaml_load/app.py",
+          "patch_code": "import yaml\nfrom typing import Any, Dict\n\ndef load_service_yaml_config(yaml_text: str) -> Dict[str, Any]:\n    data = yaml.safe_load(yaml_text)\n    if not isinstance(data, dict):\n        raise ValueError(\"Configuration root must be a mapping\")\n    return data",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 5.854,
+            "token_count": 65,
+            "confidence_score": 0.9976,
+            "entropy": 0.0066,
+            "attention_summary": {
+              "focused_token": "if",
+              "peak_weight": 0.0077,
+              "attention_entropy": 4.4559,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "if",
+                  "token_index": 239,
+                  "weight": 0.0077
+                },
+                {
+                  "token": "_text",
+                  "token_index": 214,
+                  "weight": 0.0065
+                },
+                {
+                  "token": "Dict",
+                  "token_index": 183,
+                  "weight": 0.0056
+                },
+                {
+                  "token": "Dict",
+                  "token_index": 219,
+                  "weight": 0.0053
+                },
+                {
+                  "token": "def",
+                  "token_index": 207,
+                  "weight": 0.005
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.09s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.06s",
+      "error_feedback": null
+    }
+  ]
+}

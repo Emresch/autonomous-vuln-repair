@@ -1,0 +1,115 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_13_pickle_loads",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 1,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B301",
+      "cwe_id": "CWE-502",
+      "file_path": "pipeline/tasks/task_13_pickle_loads/app.py",
+      "line_number": 15,
+      "end_line_number": 15,
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "code_snippet": "14     except Exception:\n15         return pickle.loads(raw_bytes)",
+      "message": "Pickle and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue.",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_13_pickle_loads/app.py",
+      "test_id": "B301",
+      "cwe": "CWE-502",
+      "issue_text": "Pickle and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue.",
+      "code": "14     except Exception:\n15         return pickle.loads(raw_bytes)"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 13.769,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_13_pickle_loads/app.py::decode_user_session_token": "import base64\nimport json\nfrom typing import Any, Dict\n\ndef decode_user_session_token(token_b64: str) -> Dict[str, Any]:\n    raw_bytes = base64.b64decode(token_b64.encode(\"ascii\"))\n    try:\n        return json.loads(raw_bytes.decode(\"utf-8\"))\n    except Exception:\n        raise ValueError(\"Invalid token format\")"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_13_pickle_loads/app.py": "--- a/pipeline/tasks/task_13_pickle_loads/app.py\n+++ b/pipeline/tasks/task_13_pickle_loads/app.py\n@@ -12,4 +12,4 @@\n     try:\n         return json.loads(raw_bytes.decode(\"utf-8\"))\n     except Exception:\n-        return pickle.loads(raw_bytes)\n+        raise ValueError(\"Invalid token format\")\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9914,
+    "mean_entropy": 0.0146
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 8.172,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_13_pickle_loads/app.py::decode_user_session_token",
+          "function_name": "decode_user_session_token",
+          "file": "pipeline/tasks/task_13_pickle_loads/app.py",
+          "patch_code": "import base64\nimport json\nfrom typing import Any, Dict\n\ndef decode_user_session_token(token_b64: str) -> Dict[str, Any]:\n    raw_bytes = base64.b64decode(token_b64.encode(\"ascii\"))\n    try:\n        return json.loads(raw_bytes.decode(\"utf-8\"))\n    except Exception:\n        raise ValueError(\"Invalid token format\")",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 7.327,
+            "token_count": 84,
+            "confidence_score": 0.9914,
+            "entropy": 0.0146,
+            "attention_summary": {
+              "focused_token": "ascii",
+              "peak_weight": 0.007,
+              "attention_entropy": 4.4254,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "ascii",
+                  "token_index": 257,
+                  "weight": 0.007
+                },
+                {
+                  "token": ".encode",
+                  "token_index": 255,
+                  "weight": 0.0067
+                },
+                {
+                  "token": "_session",
+                  "token_index": 216,
+                  "weight": 0.0047
+                },
+                {
+                  "token": "Dict",
+                  "token_index": 198,
+                  "weight": 0.0041
+                },
+                {
+                  "token": "_bytes",
+                  "token_index": 242,
+                  "weight": 0.0041
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.04s",
+      "error_feedback": null
+    }
+  ]
+}

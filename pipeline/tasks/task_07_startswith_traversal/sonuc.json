@@ -1,0 +1,133 @@
+{
+  "status": "REPAIRED",
+  "task_dir": "pipeline/tasks/task_07_startswith_traversal",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 2,
+  "findings": [
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.insecure-startswith-path-traversal",
+      "cwe_id": "CWE-22",
+      "file_path": "pipeline/tasks/task_07_startswith_traversal/app.py",
+      "line_number": 10,
+      "end_line_number": 10,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "10     if not candidate.startswith(base_dir):",
+      "message": "Insecure path prefix check (CWE-22): Using raw 'str.startswith()' on resolved directory paths without trailing separator or path-segment boundary verification allows sibling-directory Path Traversal (e.g. '/var/uploads_secret' matching '/var/uploads'). Enforce strict directory-segment containment before accessing files.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_07_startswith_traversal/app.py",
+      "test_id": "pipeline.sast.insecure-startswith-path-traversal",
+      "cwe": "CWE-22",
+      "issue_text": "Insecure path prefix check (CWE-22): Using raw 'str.startswith()' on resolved directory paths without trailing separator or path-segment boundary verification allows sibling-directory Path Traversal (e.g. '/var/uploads_secret' matching '/var/uploads'). Enforce strict directory-segment containment before accessing files.",
+      "code": "10     if not candidate.startswith(base_dir):"
+    },
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.insecure-startswith-path-traversal",
+      "cwe_id": "CWE-22",
+      "file_path": "pipeline/tasks/task_07_startswith_traversal/app.py",
+      "line_number": 10,
+      "end_line_number": 10,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "10     if not candidate.startswith(base_dir):",
+      "message": "Insecure path prefix check (CWE-22): Using raw 'str.startswith()' on resolved directory paths without trailing separator or path-segment boundary verification allows sibling-directory Path Traversal (e.g. '/var/uploads_secret' matching '/var/uploads'). Enforce strict directory-segment containment before accessing files.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_07_startswith_traversal/app.py",
+      "test_id": "pipeline.sast.insecure-startswith-path-traversal",
+      "cwe": "CWE-22",
+      "issue_text": "Insecure path prefix check (CWE-22): Using raw 'str.startswith()' on resolved directory paths without trailing separator or path-segment boundary verification allows sibling-directory Path Traversal (e.g. '/var/uploads_secret' matching '/var/uploads'). Enforce strict directory-segment containment before accessing files.",
+      "code": "10     if not candidate.startswith(base_dir):"
+    }
+  ],
+  "repaired": true,
+  "turns_used": 1,
+  "total_duration_seconds": 15.87,
+  "rolled_back_to_original": false,
+  "final_patches": {
+    "pipeline/tasks/task_07_startswith_traversal/app.py::load_tenant_document": "import os\nfrom typing import Optional\n\ndef load_tenant_document(tenant_root: str, relative_doc: str) -> Optional[str]:\n    base_dir = os.path.abspath(tenant_root)\n    candidate = os.path.abspath(os.path.join(base_dir, relative_doc))\n    if not candidate.startswith(base_dir + os.sep):\n        raise PermissionError(\"Path outside tenant root\")\n    if not os.path.isfile(candidate):\n        return None\n    with open(candidate, \"r\", encoding=\"utf-8\") as f:\n        return f.read()"
+  },
+  "unified_diff": {
+    "pipeline/tasks/task_07_startswith_traversal/app.py": "--- a/pipeline/tasks/task_07_startswith_traversal/app.py\n+++ b/pipeline/tasks/task_07_startswith_traversal/app.py\n@@ -7,7 +7,7 @@\n def load_tenant_document(tenant_root: str, relative_doc: str) -> Optional[str]:\n     base_dir = os.path.abspath(tenant_root)\n     candidate = os.path.abspath(os.path.join(base_dir, relative_doc))\n-    if not candidate.startswith(base_dir):\n+    if not candidate.startswith(base_dir + os.sep):\n         raise PermissionError(\"Path outside tenant root\")\n     if not os.path.isfile(candidate):\n         return None\n"
+  },
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.994,
+    "mean_entropy": 0.0054
+  },
+  "failure_summary": null,
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 10.214,
+      "stage_failed": null,
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_07_startswith_traversal/app.py::load_tenant_document",
+          "function_name": "load_tenant_document",
+          "file": "pipeline/tasks/task_07_startswith_traversal/app.py",
+          "patch_code": "import os\nfrom typing import Optional\n\ndef load_tenant_document(tenant_root: str, relative_doc: str) -> Optional[str]:\n    base_dir = os.path.abspath(tenant_root)\n    candidate = os.path.abspath(os.path.join(base_dir, relative_doc))\n    if not candidate.startswith(base_dir + os.sep):\n        raise PermissionError(\"Path outside tenant root\")\n    if not os.path.isfile(candidate):\n        return None\n    with open(candidate, \"r\", encoding=\"utf-8\") as f:\n        return f.read()",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 9.352,
+            "token_count": 114,
+            "confidence_score": 0.994,
+            "entropy": 0.0054,
+            "attention_summary": {
+              "focused_token": "enant",
+              "peak_weight": 0.005,
+              "attention_entropy": 4.5216,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "enant",
+                  "token_index": 374,
+                  "weight": 0.005
+                },
+                {
+                  "token": "os",
+                  "token_index": 351,
+                  "weight": 0.0049
+                },
+                {
+                  "token": "_",
+                  "token_index": 235,
+                  "weight": 0.0041
+                },
+                {
+                  "token": "_doc",
+                  "token_index": 392,
+                  "weight": 0.0039
+                },
+                {
+                  "token": "candidate",
+                  "token_index": 412,
+                  "weight": 0.0034
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": true,
+      "sec_pass": true,
+      "func_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.05s",
+      "error_feedback": null
+    }
+  ]
+}

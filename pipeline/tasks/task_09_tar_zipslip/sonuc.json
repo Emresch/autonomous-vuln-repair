@@ -1,0 +1,263 @@
+{
+  "status": "FAILED",
+  "task_dir": "pipeline/tasks/task_09_tar_zipslip",
+  "backend": "transformers",
+  "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "environment": {
+    "os": "Windows",
+    "os_release": "10",
+    "arch": "AMD64",
+    "python_version": "3.11.17",
+    "hardware_hint": "Windows (AMD64)"
+  },
+  "total_findings": 2,
+  "findings": [
+    {
+      "tool": "bandit",
+      "rule_id": "B202",
+      "cwe_id": "CWE-22",
+      "file_path": "pipeline/tasks/task_09_tar_zipslip/app.py",
+      "line_number": 11,
+      "end_line_number": 11,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "10     with tarfile.open(tar_path, \"r\") as archive:\n11         archive.extractall(path=dest_dir)\n12         return [m.name for m in archive.getmembers()]",
+      "message": "tarfile.extractall used without any validation. Please check and discard dangerous members.",
+      "engine": "Bandit",
+      "filename": "pipeline/tasks/task_09_tar_zipslip/app.py",
+      "test_id": "B202",
+      "cwe": "CWE-22",
+      "issue_text": "tarfile.extractall used without any validation. Please check and discard dangerous members.",
+      "code": "10     with tarfile.open(tar_path, \"r\") as archive:\n11         archive.extractall(path=dest_dir)\n12         return [m.name for m in archive.getmembers()]"
+    },
+    {
+      "tool": "semgrep",
+      "rule_id": "pipeline.sast.archive-extractall-zipslip",
+      "cwe_id": "CWE-22",
+      "file_path": "pipeline/tasks/task_09_tar_zipslip/app.py",
+      "line_number": 11,
+      "end_line_number": 11,
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "code_snippet": "11         archive.extractall(path=dest_dir)",
+      "message": "Arbitrary File Overwrite via Archive Extraction / ZipSlip (CWE-22): Calling 'extractall()' on untrusted tar/zip archives without validating each member's resolved destination path allows archive entries containing '../' or absolute paths to write files outside the target extraction directory. Validate every archive member path before extraction.",
+      "engine": "Semgrep",
+      "filename": "pipeline/tasks/task_09_tar_zipslip/app.py",
+      "test_id": "pipeline.sast.archive-extractall-zipslip",
+      "cwe": "CWE-22",
+      "issue_text": "Arbitrary File Overwrite via Archive Extraction / ZipSlip (CWE-22): Calling 'extractall()' on untrusted tar/zip archives without validating each member's resolved destination path allows archive entries containing '../' or absolute paths to write files outside the target extraction directory. Validate every archive member path before extraction.",
+      "code": "11         archive.extractall(path=dest_dir)"
+    }
+  ],
+  "repaired": false,
+  "turns_used": 3,
+  "total_duration_seconds": 62.741,
+  "rolled_back_to_original": true,
+  "final_patches": {},
+  "unified_diff": {},
+  "llm_metrics_summary": {
+    "mean_confidence_score": 0.9989,
+    "mean_entropy": 0.0032
+  },
+  "failure_summary": {
+    "reason": "MAX_TURNS_EXHAUSTED",
+    "turns_attempted": 3,
+    "last_stage_failed": "DOCKER_VERIFICATION_FAILED",
+    "last_error_feedback": "Functional Regression Failure (func_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-91/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-91/test_safe_tar_extraction0/extracted/sub/data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.17s",
+    "rolled_back_to_original": true
+  },
+  "turn_history": [
+    {
+      "turn": 1,
+      "duration_seconds": 11.281,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_09_tar_zipslip/app.py::extract_backup_archive",
+          "function_name": "extract_backup_archive",
+          "file": "pipeline/tasks/task_09_tar_zipslip/app.py",
+          "patch_code": "import os\nimport tarfile\nfrom typing import List\n\ndef extract_backup_archive(tar_path: str, dest_dir: str) -> List[str]:\n    os.makedirs(dest_dir, exist_ok=True)\n    extracted_files = []\n    with tarfile.open(tar_path, \"r\") as archive:\n        for member in archive.getmembers():\n            if not member.isdir() and \"..\" not in member.name:\n                member.path = os.path.join(dest_dir, member.name)\n                archive.extract(member, path=dest_dir)\n                extracted_files.append(member.name)\n    return extracted_files",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 10.295,
+            "token_count": 124,
+            "confidence_score": 0.9946,
+            "entropy": 0.0146,
+            "attention_summary": {
+              "focused_token": "os",
+              "peak_weight": 0.0056,
+              "attention_entropy": 4.3668,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "os",
+                  "token_index": 301,
+                  "weight": 0.0056
+                },
+                {
+                  "token": "_dir",
+                  "token_index": 344,
+                  "weight": 0.0043
+                },
+                {
+                  "token": ".makedirs",
+                  "token_index": 354,
+                  "weight": 0.0041
+                },
+                {
+                  "token": "_backup",
+                  "token_index": 327,
+                  "weight": 0.0038
+                },
+                {
+                  "token": "dest",
+                  "token_index": 343,
+                  "weight": 0.0034
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": false,
+      "sec_pass": true,
+      "func_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-88/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['C:\\\\Users\\\\EMRE\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-EMRE\\\\pytest-88\\\\test_safe_tar_extraction0\\\\extracted\\\\sub/data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.16s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.07s",
+      "error_feedback": "Functional Regression Failure (func_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-88/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['C:\\\\Users\\\\EMRE\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-EMRE\\\\pytest-88\\\\test_safe_tar_extraction0\\\\extracted\\\\sub/data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.16s"
+    },
+    {
+      "turn": 2,
+      "duration_seconds": 13.738,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_09_tar_zipslip/app.py::extract_backup_archive",
+          "function_name": "extract_backup_archive",
+          "file": "pipeline/tasks/task_09_tar_zipslip/app.py",
+          "patch_code": "import os\nimport tarfile\nfrom typing import List\n\ndef extract_backup_archive(tar_path: str, dest_dir: str) -> List[str]:\n    os.makedirs(dest_dir, exist_ok=True)\n    extracted_files = []\n    with tarfile.open(tar_path, \"r\") as archive:\n        for member in archive.getmembers():\n            if not member.isdir() and \"..\" not in member.name:\n                member.path = os.path.join(dest_dir, member.name)\n                archive.extract(member, path=dest_dir)\n                extracted_files.append(os.path.relpath(member.path, start=dest_dir))\n    return extracted_files",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 12.687,
+            "token_count": 132,
+            "confidence_score": 0.9923,
+            "entropy": 0.0201,
+            "attention_summary": {
+              "focused_token": "if",
+              "peak_weight": 0.0056,
+              "attention_entropy": 5.2797,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "if",
+                  "token_index": 573,
+                  "weight": 0.0056
+                },
+                {
+                  "token": "def",
+                  "token_index": 515,
+                  "weight": 0.0028
+                },
+                {
+                  "token": ".isdir",
+                  "token_index": 576,
+                  "weight": 0.0027
+                },
+                {
+                  "token": "os",
+                  "token_index": 590,
+                  "weight": 0.0027
+                },
+                {
+                  "token": "os",
+                  "token_index": 301,
+                  "weight": 0.0026
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": false,
+      "sec_pass": true,
+      "func_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-89/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['sub\\\\data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.16s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.07s",
+      "error_feedback": "Functional Regression Failure (func_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-89/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['sub\\\\data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.16s"
+    },
+    {
+      "turn": 3,
+      "duration_seconds": 31.99,
+      "stage_failed": "DOCKER_VERIFICATION_FAILED",
+      "execution_mode": "parallel",
+      "patches": [
+        {
+          "target": "pipeline/tasks/task_09_tar_zipslip/app.py::extract_backup_archive",
+          "function_name": "extract_backup_archive",
+          "file": "pipeline/tasks/task_09_tar_zipslip/app.py",
+          "patch_code": "import os\nimport tarfile\nfrom typing import List\n\ndef extract_backup_archive(tar_path: str, dest_dir: str) -> List[str]:\n    os.makedirs(dest_dir, exist_ok=True)\n    extracted_files = []\n    with tarfile.open(tar_path, \"r\") as archive:\n        for member in archive.getmembers():\n            if not member.isdir() and \"..\" not in member.name:\n                member.path = os.path.join(dest_dir, member.name)\n                archive.extract(member, path=dest_dir)\n                extracted_files.append(member.name.replace(\"\\\\\", \"/\"))\n    return extracted_files",
+          "syntax_valid": true,
+          "syntax_error": null,
+          "llm_metrics": {
+            "backend": "transformers",
+            "model_name": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "duration_seconds": 30.719,
+            "token_count": 127,
+            "confidence_score": 0.9989,
+            "entropy": 0.0032,
+            "attention_summary": {
+              "focused_token": "if",
+              "peak_weight": 0.0033,
+              "attention_entropy": 5.7197,
+              "num_layers": 28,
+              "num_heads": 28,
+              "hallucination_risk": "LOW",
+              "top_attended_tokens": [
+                {
+                  "token": "if",
+                  "token_index": 573,
+                  "weight": 0.0033
+                },
+                {
+                  "token": "if",
+                  "token_index": 1064,
+                  "weight": 0.0032
+                },
+                {
+                  "token": "def",
+                  "token_index": 1006,
+                  "weight": 0.0024
+                },
+                {
+                  "token": "os",
+                  "token_index": 301,
+                  "weight": 0.0022
+                },
+                {
+                  "token": "_dir",
+                  "token_index": 344,
+                  "weight": 0.0018
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "func_pass": false,
+      "sec_pass": true,
+      "func_output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-91/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-91/test_safe_tar_extraction0/extracted/sub/data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.17s",
+      "sec_output": ".                                                                        [100%]\n1 passed in 0.07s",
+      "error_feedback": "Functional Regression Failure (func_test.py):\nF                                                                        [100%]\n================================== FAILURES ===================================\n__________________________ test_safe_tar_extraction ___________________________\n\ntmp_path = WindowsPath('C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-91/test_safe_tar_extraction0')\n\n    def test_safe_tar_extraction(tmp_path: Path):\n        tar_file = tmp_path / \"backup.tar\"\n        with tarfile.open(tar_file, \"w\") as tf:\n            data = b\"backup_content_123\"\n            info = tarfile.TarInfo(name=\"sub/data.txt\")\n            info.size = len(data)\n            tf.addfile(info, io.BytesIO(data))\n    \n        out_dir = tmp_path / \"extracted\"\n        names = extract_backup_archive(str(tar_file), str(out_dir))\n>       assert \"sub/data.txt\" in names\nE       AssertionError: assert 'sub/data.txt' in ['C:/Users/EMRE/AppData/Local/Temp/pytest-of-EMRE/pytest-91/test_safe_tar_extraction0/extracted/sub/data.txt']\n\nfunc_test.py:16: AssertionError\n=========================== short test summary info ===========================\nFAILED func_test.py::test_safe_tar_extraction - AssertionError: assert 'sub/d...\n1 failed in 0.17s"
+    }
+  ]
+}
